@@ -22,8 +22,8 @@ type Event = { id:string; event_date:string; event_type:string; title:string; no
 type UserProfile = { user_id:string; organization_id:string; role:string; employee_id:string|null; display_name:string|null };
 type BackupRow = { id:string; file_name:string; storage_path:string; file_size:number; created_at:string };
 
-const STATUSES = ["P","A","C/L","O/L","S/L","H","W/O","H/L"];
-const LABELS:Record<string,string> = {P:"উপস্থিত",A:"অনুপস্থিত","C/L":"ক্যাজুয়াল ছুটি","O/L":"অফিসিয়াল ছুটি","S/L":"অসুস্থতাজনিত ছুটি",H:"সরকারি/অন্যান্য ছুটি","W/O":"সাপ্তাহিক বন্ধ","H/L":"অর্ধদিবস ছুটি"};
+const STATUSES = ["P","A","C/L","O/L","S/L","H","L/O","W/O","H/L"];
+const LABELS:Record<string,string> = {P:"উপস্থিত",A:"অনুপস্থিত","C/L":"ক্যাজুয়াল ছুটি","O/L":"অফিসিয়াল ছুটি","S/L":"অসুস্থতাজনিত ছুটি",H:"Holiday","L/O":"Lay Off","W/O":"সাপ্তাহিক বন্ধ","H/L":"অর্ধদিবস ছুটি"};
 const MONTHS = ["জানুয়ারি","ফেব্রুয়ারি","মার্চ","এপ্রিল","মে","জুন","জুলাই","আগস্ট","সেপ্টেম্বর","অক্টোবর","নভেম্বর","ডিসেম্বর"];
 const dateKey = (d:Date) => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const today = () => dateKey(new Date());
@@ -43,7 +43,7 @@ function csvDownload(rows:unknown[][],name:string){
 }
 function StatusSelect({value,onChange,disabled=false}:{value:string;onChange:(v:string)=>void;disabled?:boolean}){
   return <select className={"status "+(value?"st-"+value.replace("/","-"):"")} value={value} disabled={disabled}
-    onChange={e=>onChange(e.target.value)}><option value="">—</option>{STATUSES.map(s=><option key={s} value={s}>{s}</option>)}</select>;
+    onChange={e=>onChange(e.target.value)}><option value="">—</option>{STATUSES.map(s=><option key={s} value={s}>{s} · {LABELS[s]}</option>)}</select>;
 }
 function Field({label,children}:{label:string;children:ReactNode}){
   return <label className="field"><span>{label}</span>{children}</label>;
@@ -64,6 +64,7 @@ export default function App({profile}:{profile:Profile}){
   const [notice,setNotice]=useState("");
   const [noticeError,setNoticeError]=useState(false);
   const [selectedDate,setSelectedDate]=useState(today());
+  const [bulkStatus,setBulkStatus]=useState("H");
   const [selectedEmployee,setSelectedEmployee]=useState(profile.employee_id||"");
   const [employeeForm,setEmployeeForm]=useState<Partial<Employee>>({});
   const [editingEmployee,setEditingEmployee]=useState<string|null>(null);
@@ -119,13 +120,14 @@ export default function App({profile}:{profile:Profile}){
     if(result?.error)message(result.error.message,true);else{message("হাজিরা সংরক্ষণ হয়েছে");await load();}
     setBusy(false);
   }
-  async function updateAll(){
+  async function updateAll(status:string){
     if(!canManage)return;
-    if(!window.confirm(selectedDate+" তারিখে সকল সক্রিয় কর্মচারীকে উপস্থিত (P) করবেন?"))return;
+    const label=LABELS[status]||status;
+    if(!window.confirm(selectedDate+" তারিখে সকল সক্রিয় কর্মচারীকে "+status+" ("+label+") করবেন?"))return;
     setBusy(true);
-    const rows=employees.filter(e=>e.is_active).map(e=>({organization_id:profile.organization_id,employee_id:e.id,attendance_date:selectedDate,status:"P",entered_by:profile.user_id}));
+    const rows=employees.filter(e=>e.is_active).map(e=>({organization_id:profile.organization_id,employee_id:e.id,attendance_date:selectedDate,status,entered_by:profile.user_id}));
     const {error}=await supabase.from("attendance").upsert(rows,{onConflict:"employee_id,attendance_date"});
-    if(error)message(error.message,true);else message("নির্বাচিত দিনের সকল সক্রিয় কর্মচারী P করা হয়েছে");
+    if(error)message(error.message,true);else message("নির্বাচিত দিনের সকল সক্রিয় কর্মচারী "+status+" করা হয়েছে");
     await load();setBusy(false);
   }
   function exportMonth(){
@@ -273,7 +275,7 @@ export default function App({profile}:{profile:Profile}){
 
       {(tab==="month"||tab==="year")&&<div className="toolbar">
         <div className="month-nav"><button onClick={()=>setMonth(new Date(year,month.getMonth()-1,1))}><ChevronLeft/></button><b>{MONTHS[month.getMonth()]} {year}</b><button onClick={()=>setMonth(new Date(year,month.getMonth()+1,1))}><ChevronRight/></button></div>
-        <div className="actions">{canManage&&tab==="month"&&<><Field label="তারিখ"><input type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)}/></Field><button className="primary" onClick={()=>void updateAll()} disabled={busy}>Update All · P</button></>}<button onClick={exportMonth}><Download/> CSV</button></div>
+        <div className="actions">{canManage&&tab==="month"&&<><Field label="তারিখ"><input type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)}/></Field><button className="primary" onClick={()=>void updateAll("P")} disabled={busy}>Update All P</button><Field label="সবার জন্য স্ট্যাটাস"><select value={bulkStatus} onChange={e=>setBulkStatus(e.target.value)}>{STATUSES.filter(s=>s!=="P").map(s=><option key={s} value={s}>{s} · {LABELS[s]}</option>)}</select></Field><button onClick={()=>void updateAll(bulkStatus)} disabled={busy}>Update All Status</button></>}<button onClick={exportMonth}><Download/> CSV</button></div>
       </div>}
       {tab==="month"&&<div className="table-wrap"><table><thead><tr><th>Control No</th><th>কর্মচারীর নাম</th>{days.map(d=><th key={d}>{d}</th>)}<th>Present</th></tr></thead><tbody>
         {filtered.map(emp=><tr key={emp.id}><td>{emp.employee_code}</td><td className="name-cell">{emp.full_name}<small>{emp.department||""}</small></td>
