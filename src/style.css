@@ -163,3 +163,8 @@ footer{border-top:1px solid #e5ece7;margin-top:24px}
  .stats strong{font-size:16px}
  .calendar-expanded .months{grid-template-columns:1fr 1fr}
 }
+
+/* Friday is the regular weekly holiday */
+.weekday-label.friday-label,.weekday-head.friday-label{background:#fff0f0!important;color:#c65b62!important;border-radius:5px}
+.days span.friday-cell{background:#fff4f3;color:#bd5b61;border-radius:5px}
+.days span.friday-cell.day-P,.days span.friday-cell.day-A,.days span.friday-cell.day-C-L,.days span.friday-cell.day-O-L,.days span.friday-cell.day-S-L,.days span.friday-cell.day-H,.days span.friday-cell.day-W-O,.days span.friday-cell.day-L-O,.days span.friday-cell.day-H-L{outline:1px solid #efc4c5;outline-offset:-1px}
