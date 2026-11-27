@@ -314,7 +314,7 @@ export default function App({profile}:{profile:Profile}){
         <div><span>মুলতুবি ছুটির আবেদন</span><strong>{leaves.filter(l=>l.status==="pending"&&(canManage||l.employee_id===profile.employee_id)).length}</strong></div>
       </section>}
 
-      {(tab==="month"||tab==="year"||tab==="overtime")&&<div className="toolbar">
+      {(tab==="month"||tab==="year")&&<div className="toolbar">
         <div className="month-nav"><button onClick={()=>setMonth(new Date(year,month.getMonth()-1,1))}><ChevronLeft/></button><b>{MONTHS[month.getMonth()]} {year}</b><button onClick={()=>setMonth(new Date(year,month.getMonth()+1,1))}><ChevronRight/></button></div>
         <div className="actions">{canManage&&tab==="month"&&<><Field label="এন্ট্রির তারিখ"><input type="date" value={selectedDate} onChange={e=>{setSelectedDate(e.target.value);const d=new Date(e.target.value+"T00:00:00");setMonth(new Date(d.getFullYear(),d.getMonth(),1));}}/><small className="weekday-hint">{weekday(selectedDate)}বার</small></Field><Field label="সবার জন্য স্ট্যাটাস"><select value={bulkStatus} onChange={e=>setBulkStatus(e.target.value)}>{STATUSES.map(s=><option key={s} value={s}>{s} · {LABELS[s]}</option>)}</select></Field><button className="primary bulk-action" onClick={()=>void updateAll(bulkStatus)} disabled={busy}>Update All Status</button></>}<button onClick={exportMonth}><Download/> CSV</button></div>
       </div>}
