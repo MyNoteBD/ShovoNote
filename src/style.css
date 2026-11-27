@@ -168,3 +168,11 @@ footer{border-top:1px solid #e5ece7;margin-top:24px}
 .weekday-label.friday-label,.weekday-head.friday-label{background:#fff0f0!important;color:#c65b62!important;border-radius:5px}
 .days span.friday-cell{background:#fff4f3;color:#bd5b61;border-radius:5px}
 .days span.friday-cell.day-P,.days span.friday-cell.day-A,.days span.friday-cell.day-C-L,.days span.friday-cell.day-O-L,.days span.friday-cell.day-S-L,.days span.friday-cell.day-H,.days span.friday-cell.day-W-O,.days span.friday-cell.day-L-O,.days span.friday-cell.day-H-L{outline:1px solid #efc4c5;outline-offset:-1px}
+
+
+/* Short leave and half-day status styling */
+.st-P1,.st-P2,.day-P1,.day-P2{background:#dff3e8!important;color:#176b50}
+.st-O-L2,.day-O-L2,.st-C-L2,.day-C-L2,.st-LL-2,.day-LL-2{background:#fff0d7!important;color:#865a15}
+.st-L-O,.day-L-O{background:#eef1ef!important;color:#58675f}
+.st-OT,.day-OT{background:#e8eaff!important;color:#4d55a5}
+.status-read{min-width:42px}
