@@ -101,8 +101,21 @@ export default function App({profile}:{profile:Profile}){
     if(empError)message("কর্মচারী তালিকা: "+empError.message,true);
     const sorted=sortEmployees((empData||[]) as Employee[]);setEmployees(sorted);
     if(!selectedEmployee&&sorted[0])setSelectedEmployee(profile.employee_id||sorted[0].id);
-    const {data:att,error:attError}=await supabase.from("attendance").select("id,employee_id,attendance_date,status,note").gte("attendance_date",yearFirst).lte("attendance_date",yearLast);
-    if(attError)message("হাজিরার তথ্য: "+attError.message,true);setAttendance((att||[]) as Attendance[]);
+    // Supabase Data API returns at most 1,000 rows per request by default.
+    // Fetch every page so later months are not silently shown as blank.
+    let allAttendance:Attendance[]=[];
+    let attError: any = null;
+    for(let offset=0;;offset+=1000){
+      const page=await supabase.from("attendance").select("id,employee_id,attendance_date,status,note")
+        .gte("attendance_date",yearFirst).lte("attendance_date",yearLast)
+        .order("attendance_date").order("employee_id").range(offset,offset+999);
+      if(page.error){attError=page.error;break;}
+      const rows=(page.data||[]) as Attendance[];
+      allAttendance=allAttendance.concat(rows);
+      if(rows.length<1000)break;
+    }
+    if(attError)message("হাজিরার তথ্য: "+attError.message,true);
+    setAttendance(allAttendance);
     const {data:leaveData,error:leaveError}=await supabase.from("leave_requests").select("id,employee_id,leave_type,start_date,end_date,reason,status,created_at").order("created_at",{ascending:false});
     if(leaveError)message("ছুটির তথ্য: "+leaveError.message,true);setLeaves((leaveData||[]) as Leave[]);
     const {data:eventData,error:eventError}=await supabase.from("calendar_events").select("id,event_date,event_type,title,notes").gte("event_date",yearFirst).lte("event_date",yearLast).order("event_date");
