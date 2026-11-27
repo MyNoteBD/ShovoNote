@@ -22,10 +22,10 @@ type Event = { id:string; event_date:string; event_type:string; title:string; no
 type UserProfile = { user_id:string; organization_id:string; role:string; employee_id:string|null; display_name:string|null };
 type BackupRow = { id:string; file_name:string; storage_path:string; file_size:number; created_at:string };
 
-const STATUSES = ["P","P1","P2","A","C/L","C/L2","O/L","O/L2","S/L","H","L/O","W/O","H/L","OT","LL/2"];
-const LABELS:Record<string,string> = {P:"উপস্থিত · ৮ ঘণ্টা",P1:"১ ঘণ্টা শর্ট লিভ · ৭ ঘণ্টা ডিউটি",P2:"২ ঘণ্টা শর্ট লিভ · ৬ ঘণ্টা ডিউটি",A:"অনুপস্থিত","C/L":"ক্যাজুয়াল ছুটি","C/L2":"ক্যাজুয়াল হাফ লিভ · ৪ ঘণ্টা ডিউটি","O/L":"অফিসিয়াল ছুটি","O/L2":"অফিসিয়াল হাফ লিভ · ৪ ঘণ্টা ডিউটি","S/L":"অসুস্থতাজনিত ছুটি",H:"Holiday","L/O":"Lay Off","W/O":"সাপ্তাহিক বন্ধ","H/L":"অর্ধদিবস ছুটি · ৪ ঘণ্টা ডিউটি",OT:"ওভারটাইম (মূল কোড)","LL/2":"LL/2 (মূল কোড)"};
+const STATUSES = ["P","P1","P2","A","C/L","C/L2","O/L","O/L2","S/L","H","L/O","W/O","L/L","H/L","OT","LL/2"];
+const LABELS:Record<string,string> = {P:"উপস্থিত · ৮ ঘণ্টা",P1:"১ ঘণ্টা শর্ট লিভ · ৭ ঘণ্টা ডিউটি",P2:"২ ঘণ্টা শর্ট লিভ · ৬ ঘণ্টা ডিউটি",A:"অনুপস্থিত","C/L":"ক্যাজুয়াল ছুটি","C/L2":"ক্যাজুয়াল হাফ লিভ · ৪ ঘণ্টা ডিউটি","O/L":"অফিসিয়াল ছুটি","O/L2":"অফিসিয়াল হাফ লিভ · ৪ ঘণ্টা ডিউটি","S/L":"অসুস্থতাজনিত ছুটি",H:"Holiday","L/O":"Lay Off","W/O":"সাপ্তাহিক বন্ধ","L/L":"বদলি সাপ্তাহিক বন্ধ (শুক্রবার কাজের বিনিময়ে)","H/L":"অর্ধদিবস ছুটি · ৪ ঘণ্টা ডিউটি",OT:"ওভারটাইম (মূল কোড)","LL/2":"LL/2 (মূল কোড)"};
 const PRESENT_STATUSES = ["P","P1","P2"];
-const DUTY_HOURS:Record<string,number> = {P:8,P1:7,P2:6,A:0,"C/L":0,"C/L2":4,"O/L":0,"O/L2":4,"S/L":0,H:0,"L/O":0,"W/O":0,"H/L":4};
+const DUTY_HOURS:Record<string,number> = {P:8,P1:7,P2:6,A:0,"C/L":0,"C/L2":4,"O/L":0,"O/L2":4,"S/L":0,H:0,"L/O":0,"W/O":0,"L/L":0,"H/L":4};
 const MONTHS = ["জানুয়ারি","ফেব্রুয়ারি","মার্চ","এপ্রিল","মে","জুন","জুলাই","আগস্ট","সেপ্টেম্বর","অক্টোবর","নভেম্বর","ডিসেম্বর"];
 const WEEKDAYS = ["রবি","সোম","মঙ্গল","বুধ","বৃহঃ","শুক্র","শনি"];
 const weekday = (date:string) => WEEKDAYS[new Date(date+"T00:00:00").getDay()];
