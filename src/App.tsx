@@ -14,6 +14,7 @@ type Employee = {
   joining_date?:string|null; emergency_contact?:string|null; is_active:boolean;
 };
 type Attendance = { id?:string; employee_id:string; attendance_date:string; status:string; note?:string|null };
+type OvertimeEntry = { id:string; employee_id:string; overtime_date:string; hours:number };
 type Leave = {
   id:string; employee_id:string; leave_type:string; start_date:string; end_date:string;
   reason:string|null; status:string; created_at:string;
@@ -57,6 +58,8 @@ export default function App({profile}:{profile:Profile}){
   const canSeeAll=["owner","admin","viewer"].includes(profile.role);
   const [employees,setEmployees]=useState<Employee[]>([]);
   const [attendance,setAttendance]=useState<Attendance[]>([]);
+  const [overtimeEntries,setOvertimeEntries]=useState<OvertimeEntry[]>([]);
+  const [draftOT,setDraftOT]=useState<Record<string,string>>({});
   const [leaves,setLeaves]=useState<Leave[]>([]);
   const [events,setEvents]=useState<Event[]>([]);
   const [users,setUsers]=useState<UserProfile[]>([]);
@@ -88,6 +91,8 @@ export default function App({profile}:{profile:Profile}){
     (canSeeAll||e.id===profile.employee_id)),[employees,includeInactive,canSeeAll,profile.employee_id]);
   const filtered=useMemo(()=>visibleEmployees.filter(e=>(e.full_name+" "+e.employee_code+" "+(e.department||"")).toLowerCase().includes(search.toLowerCase())),[visibleEmployees,search]);
   const lookup=useMemo(()=>new Map(attendance.map(a=>[a.employee_id+"|"+a.attendance_date,a])),[attendance]);
+  const overtimeLookup=useMemo(()=>new Map(overtimeEntries.map(o=>[o.employee_id+"|"+o.overtime_date,o])),[overtimeEntries]);
+  const monthOTTotal=overtimeEntries.filter(o=>o.overtime_date>=first&&o.overtime_date<=last&&(!profile.employee_id||canSeeAll||o.employee_id===profile.employee_id)).reduce((sum,o)=>sum+Number(o.hours||0),0);
   const employeeMap=useMemo(()=>new Map(employees.map(e=>[e.id,e])),[employees]);
   const selectedEmployeeRow=employeeMap.get(selectedEmployee);
   const days=Array.from({length:new Date(year,month.getMonth()+1,0).getDate()},(_,i)=>i+1);
@@ -116,6 +121,9 @@ export default function App({profile}:{profile:Profile}){
     }
     if(attError)message("হাজিরার তথ্য: "+attError.message,true);
     setAttendance(allAttendance);
+    let allOT:OvertimeEntry[]=[];let otError:any=null;
+    for(let offset=0;;offset+=1000){const page=await supabase.from("overtime_entries").select("id,employee_id,overtime_date,hours").gte("overtime_date",yearFirst).lte("overtime_date",yearLast).order("overtime_date").order("employee_id").range(offset,offset+999);if(page.error){otError=page.error;break;}const rows=(page.data||[]) as OvertimeEntry[];allOT=allOT.concat(rows);if(rows.length<1000)break;}
+    if(otError)message("OT তথ্য: "+otError.message,true);setOvertimeEntries(allOT);
     const {data:leaveData,error:leaveError}=await supabase.from("leave_requests").select("id,employee_id,leave_type,start_date,end_date,reason,status,created_at").order("created_at",{ascending:false});
     if(leaveError)message("ছুটির তথ্য: "+leaveError.message,true);setLeaves((leaveData||[]) as Leave[]);
     const {data:eventData,error:eventError}=await supabase.from("calendar_events").select("id,event_date,event_type,title,notes").gte("event_date",yearFirst).lte("event_date",yearLast).order("event_date");
@@ -130,7 +138,7 @@ export default function App({profile}:{profile:Profile}){
   }
   useEffect(()=>{void load();},[year,month.getMonth(),profile.user_id]);
   useEffect(()=>{try{localStorage.setItem("shovonote:last-tab:"+profile.user_id,tab);localStorage.setItem("shovonote:last-month:"+profile.user_id,dateKey(new Date(year,month.getMonth(),1)));localStorage.setItem("shovonote:last-date:"+profile.user_id,selectedDate);}catch{/* Browser storage may be unavailable; keep the current session working. */}},[tab,year,month.getMonth(),selectedDate,profile.user_id]);
-  useEffect(()=>{const allowed=canSeeAll?["month","year","employees","leaves","calendar",...(canManage?["access","backups"]:[])]:["mine","leaves"];if(!allowed.includes(tab))setTab(allowed[0]);},[tab,canSeeAll,canManage]);
+  useEffect(()=>{const allowed=canSeeAll?["month","year","employees","leaves","calendar","overtime","ot-calendar",...(canManage?["access","backups"]:[])]:["mine","leaves","overtime","ot-calendar"];if(!allowed.includes(tab))setTab(allowed[0]);},[tab,canSeeAll,canManage]);
   async function setStatus(employeeId:string,date:string,status:string){
     if(!canManage)return;setBusy(true);
     const old=lookup.get(employeeId+"|"+date);
@@ -148,6 +156,13 @@ export default function App({profile}:{profile:Profile}){
     await setStatus(employeeId,date,status);
     setDraftStatuses(prev=>{const next={...prev};delete next[key];return next;});
   }
+  async function saveOvertime(employeeId:string,date:string,hoursText:string){
+    if(!canManage)return;setBusy(true);const key=employeeId+"|"+date;const existing=overtimeLookup.get(key);const raw=hoursText.trim();let result:any;
+    if(!raw&&existing)result=await supabase.from("overtime_entries").delete().eq("id",existing.id);
+    else if(raw){const hours=Number(raw);if(!Number.isFinite(hours)||hours<=0||hours>24){message("OT ঘণ্টা ০-এর বেশি এবং সর্বোচ্চ ২৪ হতে হবে",true);setBusy(false);return;}if(existing)result=await supabase.from("overtime_entries").update({hours,entered_by:profile.user_id,updated_at:new Date().toISOString()}).eq("id",existing.id);else result=await supabase.from("overtime_entries").insert({organization_id:profile.organization_id,employee_id:employeeId,overtime_date:date,hours,entered_by:profile.user_id});}
+    if(result?.error)message(result.error.message,true);else message("OT ঘণ্টা সংরক্ষণ হয়েছে");setDraftOT(prev=>{const next={...prev};delete next[key];return next;});await load();setBusy(false);
+  }
+  function exportOTMonth(){const rows:unknown[][]=[["Control No","Employee","Date","OT Hours"]];employees.filter(e=>e.is_active&&(!profile.employee_id||canSeeAll||e.id===profile.employee_id)).forEach(e=>days.forEach(d=>{const date=dateKey(new Date(year,month.getMonth(),d));const entry=overtimeLookup.get(e.id+"|"+date);if(entry)rows.push([e.employee_code,e.full_name,date,Number(entry.hours)]);}));csvDownload(rows,"overtime-"+first.slice(0,7)+".csv");}
   async function updateAll(status:string){
     if(!canManage)return;
     const label=LABELS[status]||status;
@@ -238,7 +253,7 @@ export default function App({profile}:{profile:Profile}){
   }
   async function makeBackup(){
     if(!canManage)return;setBusy(true);
-    const payload={app:"Employee Attendance System",version:1,created_at:new Date().toISOString(),organization_id:profile.organization_id,employees,attendance,leave_requests:leaves,calendar_events:events};
+    const payload={app:"Employee Attendance System",version:1,created_at:new Date().toISOString(),organization_id:profile.organization_id,employees,attendance,overtime_entries:overtimeEntries,leave_requests:leaves,calendar_events:events};
     const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
     const fileName="attendance-backup-"+today()+".json";
     const path=profile.organization_id+"/"+Date.now()+"-"+fileName;
@@ -260,7 +275,7 @@ export default function App({profile}:{profile:Profile}){
     try{
       const raw=JSON.parse(await file.text());
       if(raw.organization_id!==profile.organization_id)throw new Error("এই ব্যাকআপটি অন্য প্রতিষ্ঠানের।");
-      const groups:[string,any[]][]=[["employees",raw.employees||[]],["attendance",raw.attendance||[]],["leave_requests",raw.leave_requests||[]],["calendar_events",raw.calendar_events||[]]];
+      const groups:[string,any[]][]=[["employees",raw.employees||[]],["attendance",raw.attendance||[]],["overtime_entries",raw.overtime_entries||[]],["leave_requests",raw.leave_requests||[]],["calendar_events",raw.calendar_events||[]]];
       for(const [table,rows] of groups){
         if(!rows.length)continue;
         const safe=rows.map(row=>{const copy={...row};delete copy.created_at;return copy;});
@@ -281,6 +296,7 @@ export default function App({profile}:{profile:Profile}){
 
   const tabs=[
     ...(canSeeAll?[{id:"month",label:"মাসিক রেজিস্টার",icon:<CalendarDays/>},{id:"year",label:"বার্ষিক ক্যালেন্ডার",icon:<CalendarCheck/>},{id:"employees",label:"কর্মচারী",icon:<Users/>}]:[{id:"mine",label:"আমার হাজিরা",icon:<UserRound/>}]),
+    {id:"overtime",label:"OT এন্ট্রি",icon:<Clock/>},{id:"ot-calendar",label:"OT ক্যালেন্ডার",icon:<CalendarDays/>},
     {id:"leaves",label:"ছুটির আবেদন",icon:<ClipboardList/>},
     ...(canSeeAll?[{id:"calendar",label:"ছুটি ও হলিডে",icon:<CalendarDays/>}]:[]),
     ...(canManage?[{id:"access",label:"অ্যাক্সেস",icon:<Shield/>},{id:"backups",label:"ব্যাকআপ",icon:<HardDrive/>}]:[])
@@ -294,19 +310,22 @@ export default function App({profile}:{profile:Profile}){
       {tab!=="access"&&tab!=="backups"&&<section className="stats">
         <div><span>মোট কর্মচারী</span><strong>{canSeeAll?employees.filter(e=>e.is_active).length:(profile.employee_id?1:0)}</strong></div>
         <div><span>এই মাসে উপস্থিতি</span><strong>{canSeeAll?monthCount("P"):attendance.filter(a=>a.employee_id===profile.employee_id&&a.status==="P"&&a.attendance_date>=first&&a.attendance_date<=last).length}</strong></div>
+        <div><span>এই মাসে OT ঘণ্টা</span><strong>{monthOTTotal.toLocaleString("bn-BD")}</strong></div>
         <div><span>মুলতুবি ছুটির আবেদন</span><strong>{leaves.filter(l=>l.status==="pending"&&(canManage||l.employee_id===profile.employee_id)).length}</strong></div>
       </section>}
 
-      {(tab==="month"||tab==="year")&&<div className="toolbar">
+      {(tab==="month"||tab==="year"||tab==="overtime")&&<div className="toolbar">
         <div className="month-nav"><button onClick={()=>setMonth(new Date(year,month.getMonth()-1,1))}><ChevronLeft/></button><b>{MONTHS[month.getMonth()]} {year}</b><button onClick={()=>setMonth(new Date(year,month.getMonth()+1,1))}><ChevronRight/></button></div>
         <div className="actions">{canManage&&tab==="month"&&<><Field label="এন্ট্রির তারিখ"><input type="date" value={selectedDate} onChange={e=>{setSelectedDate(e.target.value);const d=new Date(e.target.value+"T00:00:00");setMonth(new Date(d.getFullYear(),d.getMonth(),1));}}/><small className="weekday-hint">{weekday(selectedDate)}বার</small></Field><Field label="সবার জন্য স্ট্যাটাস"><select value={bulkStatus} onChange={e=>setBulkStatus(e.target.value)}>{STATUSES.map(s=><option key={s} value={s}>{s} · {LABELS[s]}</option>)}</select></Field><button className="primary bulk-action" onClick={()=>void updateAll(bulkStatus)} disabled={busy}>Update All Status</button></>}<button onClick={exportMonth}><Download/> CSV</button></div>
       </div>}
+      {tab==="overtime"&&<><div className="toolbar"><div className="month-nav"><button onClick={()=>setMonth(new Date(year,month.getMonth()-1,1))}><ChevronLeft/></button><b>{MONTHS[month.getMonth()]} {year} · OT</b><button onClick={()=>setMonth(new Date(year,month.getMonth()+1,1))}><ChevronRight/></button></div><div className="actions">{canManage&&<Field label="OT এন্ট্রির তারিখ"><input type="date" value={selectedDate} onChange={e=>{setSelectedDate(e.target.value);const d=new Date(e.target.value+"T00:00:00");setMonth(new Date(d.getFullYear(),d.getMonth(),1));}}/><small className="weekday-hint">{weekday(selectedDate)}বার</small></Field>}<button onClick={exportOTMonth}><Download/> CSV</button></div></div><div className="table-wrap"><table><thead><tr><th>Control No</th><th>কর্মচারীর নাম</th>{days.map(d=>{const date=dateKey(new Date(year,month.getMonth(),d));return <th key={d}><span className={"weekday-head "+(new Date(date+"T00:00:00").getDay()===5?"friday-label":"")}>{weekday(date)}</span><b>{d}</b></th>;})}<th>মোট OT ঘণ্টা</th></tr></thead><tbody>{filtered.map(emp=><tr key={emp.id}><td>{emp.employee_code}</td><td className="name-cell">{emp.full_name}<small>{emp.department||""}</small></td>{days.map(d=>{const date=dateKey(new Date(year,month.getMonth(),d));const key=emp.id+"|"+date;const entry=overtimeLookup.get(key);const draft=draftOT[key];const selected=date===selectedDate;return <td key={d} className={selected?"selected-date-cell":""}>{selected&&canManage?<div className="cell-editor"><input className="status ot-hour-input" type="number" min="0" max="24" step="0.25" placeholder="h" value={draft===undefined?(entry?String(entry.hours):""):draft} disabled={busy} onChange={e=>setDraftOT(prev=>({...prev,[key]:e.target.value}))}/><button className="save-cell" disabled={busy||draft===undefined} onClick={()=>void saveOvertime(emp.id,date,draft)}>Update</button></div>:<span className="ot-hour-value">{entry?Number(entry.hours).toLocaleString("bn-BD")+"h":""}</span>}</td>;})}<td>{overtimeEntries.filter(o=>o.employee_id===emp.id&&o.overtime_date>=first&&o.overtime_date<=last).reduce((sum,o)=>sum+Number(o.hours||0),0).toLocaleString("bn-BD")} h</td></tr>)}</tbody></table></div></>}
       {tab==="month"&&<div className="table-wrap"><table><thead><tr><th>Control No</th><th>কর্মচারীর নাম</th>{days.map(d=>{const date=dateKey(new Date(year,month.getMonth(),d));return <th key={d}><span className={"weekday-head "+(new Date(date+"T00:00:00").getDay()===5?"friday-label":"")}>{weekday(date)}</span><b>{d}</b></th>;})}<th>Present</th><th>Duty Hours</th></tr></thead><tbody>
         {filtered.map(emp=><tr key={emp.id}><td>{emp.employee_code}</td><td className="name-cell">{emp.full_name}<small>{emp.department||""}</small></td>
           {days.map(d=>{const date=dateKey(new Date(year,month.getMonth(),d));const key=emp.id+"|"+date;const st=lookup.get(key)?.status||"";const isSelected=date===selectedDate;const draft=draftStatuses[key];return <td key={d} className={isSelected?"selected-date-cell":""}>{isSelected&&canManage?<div className="cell-editor"><StatusSelect value={draft===undefined?st:draft} disabled={busy} onChange={v=>stageStatus(emp.id,date,v)}/><button className="save-cell" disabled={busy||draft===undefined} onClick={()=>void saveStagedStatus(emp.id,date)}>{busy?"…":"Update"}</button></div>:<span className={"status-read "+(st?"day-"+st.replace("/","-"):"")}>{st||"—"}</span>}</td>;})}
           <td>{attendance.filter(a=>a.employee_id===emp.id&&PRESENT_STATUSES.includes(a.status)&&a.attendance_date>=first&&a.attendance_date<=last).length}</td><td>{attendance.filter(a=>a.employee_id===emp.id&&a.attendance_date>=first&&a.attendance_date<=last).reduce((sum,a)=>sum+(DUTY_HOURS[a.status]??0),0)} h</td></tr>)}
       </tbody></table></div>}
       {tab==="year"&&<><div className="calendar-year-picker"><label>ক্যালেন্ডার বছর <select value={year} onChange={e=>setMonth(new Date(Number(e.target.value),month.getMonth(),1))}>{Array.from({length:9},(_,i)=>new Date().getFullYear()-4+i).map(y=><option key={y} value={y}>{y}</option>)}</select></label><span className="muted">ক্যালেন্ডার দেখতে কর্মচারীর নাম চাপুন</span></div><div className="employee-list calendar-employee-list">{filtered.map(emp=><div className="calendar-employee" key={emp.id}><button className={"calendar-employee-toggle "+(expandedCalendarEmployee===emp.id?"expanded":"")} onClick={()=>setExpandedCalendarEmployee(prev=>prev===emp.id?null:emp.id)}><span><b>{emp.employee_code}</b><strong>{emp.full_name}</strong></span><span>{expandedCalendarEmployee===emp.id?"Hide calendar":"View calendar"} <span className="toggle-mark">{expandedCalendarEmployee===emp.id?"−":"＋"}</span></span></button>{expandedCalendarEmployee===emp.id&&<article className="employee-year calendar-expanded"><div className="months">{years.map(i=>{const count=new Date(year,i+1,0).getDate();const offset=new Date(year,i,1).getDay();return <div className="mini-month" key={i}><b>{MONTHS[i]}</b><div className="days"><span className="weekday-label">রবি</span><span className="weekday-label">সোম</span><span className="weekday-label">মঙ্গল</span><span className="weekday-label">বুধ</span><span className="weekday-label">বৃহঃ</span><span className="weekday-label friday-label">শুক্র</span><span className="weekday-label">শনি</span>{Array.from({length:offset},(_,n)=><span key={"blank"+n}/>)}{Array.from({length:count},(_,d)=>{const date=dateKey(new Date(year,i,d+1));const st=lookup.get(emp.id+"|"+date)?.status||"";return <span title={date+" "+(LABELS[st]||"")} className={(new Date(date+"T00:00:00").getDay()===5?"friday-cell ":"")+(st?"day-"+st.replace("/","-"):"")} key={d}>{st&&st!=="P"?st:d+1}</span>;})}</div></div>;})}</div><div className="totals">{totals(emp.id).map(t=><span key={t.s}>{t.s}: <b>{t.n}</b></span>)}</div></article>}</div>)}</div></>}
+      {tab==="ot-calendar"&&<><div className="calendar-year-picker"><label>OT ক্যালেন্ডার বছর <select value={year} onChange={e=>setMonth(new Date(Number(e.target.value),month.getMonth(),1))}>{Array.from({length:9},(_,i)=>new Date().getFullYear()-4+i).map(y=><option key={y} value={y}>{y}</option>)}</select></label></div><div className="employee-list calendar-employee-list">{filtered.map(emp=><div className="calendar-employee" key={emp.id}><button className={"calendar-employee-toggle "+(expandedCalendarEmployee===emp.id?"expanded":"")} onClick={()=>setExpandedCalendarEmployee(prev=>prev===emp.id?null:emp.id)}><span><b>{emp.employee_code}</b><strong>{emp.full_name}</strong></span><span>{expandedCalendarEmployee===emp.id?"Hide calendar":"View calendar"} <span className="toggle-mark">{expandedCalendarEmployee===emp.id?"−":"＋"}</span></span></button>{expandedCalendarEmployee===emp.id&&<article className="employee-year calendar-expanded"><div className="months">{years.map(i=>{const count=new Date(year,i+1,0).getDate();const offset=new Date(year,i,1).getDay();return <div className="mini-month" key={i}><b>{MONTHS[i]}</b><div className="days"><span className="weekday-label">রবি</span><span className="weekday-label">সোম</span><span className="weekday-label">মঙ্গল</span><span className="weekday-label">বুধ</span><span className="weekday-label">বৃহঃ</span><span className="weekday-label friday-label">শুক্র</span><span className="weekday-label">শনি</span>{Array.from({length:offset},(_,n)=><span key={"blank"+n}/>)}{Array.from({length:count},(_,d)=>{const date=dateKey(new Date(year,i,d+1));const entry=overtimeLookup.get(emp.id+"|"+date);return <span title={date} className={(new Date(date+"T00:00:00").getDay()===5?"friday-cell ":"")+"ot-calendar-hour"} key={d}>{entry?Number(entry.hours).toLocaleString("bn-BD"):""}</span>;})}</div></div>;})}</div></article>}</div>)}</div></>}
       {tab==="mine"&&<><div className="toolbar"><div className="month-nav"><button onClick={()=>setMonth(new Date(year,month.getMonth()-1,1))}><ChevronLeft/></button><b>{MONTHS[month.getMonth()]} {year}</b><button onClick={()=>setMonth(new Date(year,month.getMonth()+1,1))}><ChevronRight/></button></div></div><div className="employee-year"><h3>{selectedEmployeeRow?.full_name||profile.display_name||"আমার হাজিরা"} · {selectedEmployeeRow?.employee_code||""}</h3><div className="months">{years.map(i=><div className="mini-month" key={i}><b>{MONTHS[i]}</b><div className="days"><span className="weekday-label">রবি</span><span className="weekday-label">সোম</span><span className="weekday-label">মঙ্গল</span><span className="weekday-label">বুধ</span><span className="weekday-label">বৃহঃ</span><span className="weekday-label friday-label">শুক্র</span><span className="weekday-label">শনি</span>{Array.from({length:new Date(year,i+1,0).getDate()},(_,d)=>{const date=dateKey(new Date(year,i,d+1));const st=lookup.get((profile.employee_id||"")+"|"+date)?.status||"";return <span key={d} title={date+" "+(LABELS[st]||"")} className={st?"day-"+st.replace("/","-"):""}>{st&&st!=="P"?st:d+1}</span>;})}</div></div>)}</div><div className="totals">{totals(profile.employee_id||"").map(t=><span key={t.s}>{t.s}: <b>{t.n}</b></span>)}</div></div><h3>আমার ছুটির রেকর্ড</h3><LeaveTable leaves={leaves.filter(l=>l.employee_id===profile.employee_id)} employeeMap={employeeMap}/></>}
       {tab==="employees"&&<><div className="toolbar"><div className="search"><Search/><input placeholder="নাম বা Control Number দিয়ে খুঁজুন" value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="actions"><label className="checkline"><input type="checkbox" checked={includeInactive} onChange={e=>setIncludeInactive(e.target.checked)}/> নিষ্ক্রিয়সহ</label><button onClick={exportEmployees}><Download/> CSV</button>{canManage&&<button className="primary" onClick={()=>{setEditingEmployee(null);setEmployeeForm({is_active:true});setShowEmployeeForm(true)}}><Plus/> নতুন কর্মচারী</button>}</div></div>
         <div className="employee-list">{filtered.map(emp=><div className="employee-row" key={emp.id}><div><b>{emp.employee_code} · {emp.full_name}</b><small>{emp.department||"—"} · {emp.designation||"—"} {emp.phone||""} {!emp.is_active?" · নিষ্ক্রিয়":""}</small></div><div className="actions">{emp.phone&&<a className="call" href={"tel:"+emp.phone}><Phone/> কল</a>}{canManage&&<button onClick={()=>editEmployee(emp)}><Pencil/> Edit</button>}</div></div>)}</div>
