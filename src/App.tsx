@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ReactNode, FormEvent } from "react";
 import { supabase } from "./supabase";
 import type { Profile } from "./AuthGate";
 import {
@@ -44,7 +45,7 @@ function StatusSelect({value,onChange,disabled=false}:{value:string;onChange:(v:
   return <select className={"status "+(value?"st-"+value.replace("/","-"):"")} value={value} disabled={disabled}
     onChange={e=>onChange(e.target.value)}><option value="">—</option>{STATUSES.map(s=><option key={s} value={s}>{s}</option>)}</select>;
 }
-function Field({label,children}:{label:string;children:React.ReactNode}){
+function Field({label,children}:{label:string;children:ReactNode}){
   return <label className="field"><span>{label}</span>{children}</label>;
 }
 export default function App({profile}:{profile:Profile}){
@@ -140,7 +141,7 @@ export default function App({profile}:{profile:Profile}){
   }
   const totals=(id:string)=>STATUSES.map(s=>({s,n:attendance.filter(a=>a.employee_id===id&&a.status===s&&a.attendance_date>=yearFirst&&a.attendance_date<=yearLast).length}));
   const monthCount=(status:string)=>attendance.filter(a=>a.status===status&&a.attendance_date>=first&&a.attendance_date<=last).length;
-  async function saveEmployee(e:React.FormEvent){
+  async function saveEmployee(e:FormEvent){
     e.preventDefault();if(!canManage)return;setBusy(true);
     const payload={organization_id:profile.organization_id,employee_code:employeeForm.employee_code||"",full_name:employeeForm.full_name||"",department:employeeForm.department||null,designation:employeeForm.designation||null,email:employeeForm.email||null,phone:employeeForm.phone||null,joining_date:employeeForm.joining_date||null,emergency_contact:employeeForm.emergency_contact||null,is_active:employeeForm.is_active!==false};
     const result=editingEmployee?await supabase.from("employees").update(payload).eq("id",editingEmployee):await supabase.from("employees").insert(payload);
