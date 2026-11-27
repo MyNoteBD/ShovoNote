@@ -185,3 +185,14 @@ footer{border-top:1px solid #e5ece7;margin-top:24px}
 .stats{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media(max-width:850px){.stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(max-width:650px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+/* OT calendar: keep the date visible, with hours below it */
+.ot-calendar-hour{display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:30px;padding:2px 0}
+.ot-calendar-date{font-size:9px;line-height:1.1;color:var(--text,#26332d);font-weight:650}
+.ot-calendar-hours{font-size:8px;line-height:1.1;color:#176b50;font-weight:800}
+.ot-summary{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;margin:8px 0;border:1px solid var(--border,#dce5df);border-radius:10px;background:var(--surface,#fff);font-size:13px}
+.ot-summary strong,.ot-employee-total{font-weight:800;color:#176b50}
+.ot-employee-total{padding:7px 10px;font-size:12px}
+.calendar-year-picker{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+@media(max-width:600px){.ot-summary{align-items:flex-start;flex-direction:column}.calendar-year-picker{align-items:flex-start}}
