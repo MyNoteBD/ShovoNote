@@ -176,3 +176,12 @@ footer{border-top:1px solid #e5ece7;margin-top:24px}
 .st-L-O,.day-L-O{background:#eef1ef!important;color:#58675f}
 .st-OT,.day-OT{background:#e8eaff!important;color:#4d55a5}
 .status-read{min-width:42px}
+
+
+/* Separate overtime hours register */
+.ot-hour-input{width:64px!important;min-width:64px!important;text-align:center;font-variant-numeric:tabular-nums}
+.ot-hour-value{display:inline-block;min-width:34px;font-size:11px;font-weight:750;color:#176b50;font-variant-numeric:tabular-nums}
+.ot-calendar-hour{font-size:9px;font-weight:750;color:#176b50;background:#e5f3ea;border-radius:5px;text-align:center;font-variant-numeric:tabular-nums}
+.stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:850px){.stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:650px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
