@@ -14,6 +14,7 @@ type Employee = {
   joining_date?:string|null; emergency_contact?:string|null; is_active:boolean;
 };
 type Attendance = { id?:string; employee_id:string; attendance_date:string; status:string; note?:string|null };
+type MonthlyNote = { id:string; employee_id:string; month_start:string; note:string };
 type OvertimeEntry = { id:string; employee_id:string; overtime_date:string; hours:number };
 type Leave = {
   id:string; employee_id:string; leave_type:string; start_date:string; end_date:string;
@@ -24,7 +25,7 @@ type UserProfile = { user_id:string; organization_id:string; role:string; employ
 type BackupRow = { id:string; file_name:string; storage_path:string; file_size:number; created_at:string };
 
 const STATUSES = ["P","P1","P2","A","C/L","C/L2","O/L","O/L2","S/L","H","L/O","W/O","L/L","H/L","OT","LL/2"];
-const LABELS:Record<string,string> = {P:" ·  Hours",P1:" Hours   ·  Hours ",P2:" Hours   ·  Hours ",A:"","C/L":" Leave","C/L2":"   ·  Hours ","O/L":" Leave","O/L2":"   ·  Hours ","S/L":" Leave",H:"Holiday","L/O":"Lay Off","W/O":"Weekly Off","L/L":"Compensatory Weekly Off (Friday Work Exchange)","H/L":" Leave ·  Hours ",OT:" (Legacy Code)","LL/2":"LL/2 (Legacy Code)"};
+const LABELS:Record<string,string> = {P:"Present · 8 Hours",P1:"Present · 1 Hour Short Leave",P2:"Present · 2 Hours Short Leave",A:"Absent","C/L":"Casual Leave","C/L2":"Half-day Casual Leave","O/L":"Official Leave","O/L2":"Half-day Official Leave","S/L":"Sick Leave",H:"Holiday","L/O":"Lay Off","W/O":"Weekly Off","L/L":"Compensatory Weekly Off (Friday Work Exchange)","H/L":"Half-day Leave",OT:"Legacy Overtime Code","LL/2":"Legacy Leave Code"};
 const PRESENT_STATUSES = ["P","P1","P2"];
 const DUTY_HOURS:Record<string,number> = {P:8,P1:7,P2:6,A:0,"C/L":0,"C/L2":4,"O/L":0,"O/L2":4,"S/L":0,H:0,"L/O":0,"W/O":0,"L/L":0,"H/L":4};
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -47,8 +48,9 @@ function csvDownload(rows:unknown[][],name:string){
   downloadBlob(csv,name,"text/csv;charset=utf-8");
 }
 function StatusSelect({value,onChange,disabled=false}:{value:string;onChange:(v:string)=>void;disabled?:boolean}){
+  const optionLabel=(s:string)=>s==="O/L2"?"1/2 O/L — Half-day Official Leave":s==="C/L2"?"1/2 C/L — Half-day Casual Leave":`${s} — ${LABELS[s]}`;
   return <select className={"status "+(value?"st-"+value.replace("/","-"):"")} value={value} disabled={disabled}
-    onChange={e=>onChange(e.target.value)}><option value="">—</option>{STATUSES.map(s=><option key={s} value={s}>{s} · {LABELS[s]}</option>)}</select>;
+    onChange={e=>onChange(e.target.value)}><option value="">Select status</option>{STATUSES.map(s=><option key={s} value={s}>{optionLabel(s)}</option>)}</select>;
 }
 function Field({label,children}:{label:string;children:ReactNode}){
   return <label className="field"><span>{label}</span>{children}</label>;
@@ -58,6 +60,8 @@ export default function App({profile}:{profile:Profile}){
   const canSeeAll=["owner","admin","viewer"].includes(profile.role);
   const [employees,setEmployees]=useState<Employee[]>([]);
   const [attendance,setAttendance]=useState<Attendance[]>([]);
+  const [monthlyNotes,setMonthlyNotes]=useState<MonthlyNote[]>([]);
+  const [draftMonthlyNotes,setDraftMonthlyNotes]=useState<Record<string,string>>({});
   const [overtimeEntries,setOvertimeEntries]=useState<OvertimeEntry[]>([]);
   const [draftOT,setDraftOT]=useState<Record<string,string>>({});
   const [leaves,setLeaves]=useState<Leave[]>([]);
@@ -123,6 +127,10 @@ export default function App({profile}:{profile:Profile}){
     }
     if(attError)message(" Data: "+attError.message,true);
     setAttendance(allAttendance);
+    const {data:noteData,error:noteError}=await supabase.from("attendance_monthly_notes").select("id,employee_id,month_start,note").eq("month_start",first);
+    if(noteError)message("Monthly Notes: "+noteError.message,true);
+    const noteRows=(noteData||[]) as MonthlyNote[];setMonthlyNotes(noteRows);
+    setDraftMonthlyNotes(Object.fromEntries(noteRows.map(n=>[n.employee_id,n.note||""])));
     let allOT:OvertimeEntry[]=[];let otError:any=null;
     for(let offset=0;;offset+=1000){const page=await supabase.from("overtime_entries").select("id,employee_id,overtime_date,hours").gte("overtime_date",yearFirst).lte("overtime_date",yearLast).order("overtime_date").order("employee_id").range(offset,offset+999);if(page.error){otError=page.error;break;}const rows=(page.data||[]) as OvertimeEntry[];allOT=allOT.concat(rows);if(rows.length<1000)break;}
     if(otError)message("OT Data: "+otError.message,true);setOvertimeEntries(allOT);
@@ -152,6 +160,14 @@ export default function App({profile}:{profile:Profile}){
     setBusy(false);
   }
   function stageStatus(employeeId:string,date:string,status:string){setDraftStatuses(prev=>({...prev,[employeeId+"|"+date]:status}));}
+  async function saveMonthlyNote(employeeId:string){
+    if(!canManage)return;const note=(draftMonthlyNotes[employeeId]||"").trim();const existing=monthlyNotes.find(n=>n.employee_id===employeeId);setBusy(true);
+    const result=note
+      ? await supabase.from("attendance_monthly_notes").upsert({organization_id:profile.organization_id,employee_id:employeeId,month_start:first,note,updated_by:profile.user_id,updated_at:new Date().toISOString()},{onConflict:"organization_id,employee_id,month_start"})
+      : existing?await supabase.from("attendance_monthly_notes").delete().eq("id",existing.id):{error:null};
+    if(result.error)message(result.error.message,true);else{message("Monthly note saved");await load();}
+    setBusy(false);
+  }
   async function saveStagedStatus(employeeId:string,date:string){
     const key=employeeId+"|"+date;const status=draftStatuses[key];
     if(status===undefined)return;
@@ -267,7 +283,9 @@ export default function App({profile}:{profile:Profile}){
   }
   async function makeBackup(){
     if(!canManage)return;setBusy(true);
-    const payload={app:"Employee Attendance System",version:1,created_at:new Date().toISOString(),organization_id:profile.organization_id,employees,attendance,overtime_entries:overtimeEntries,leave_requests:leaves,calendar_events:events};
+    const {data:allMonthlyNotes,error:notesError}=await supabase.from("attendance_monthly_notes").select("*");
+    if(notesError){message("Monthly notes backup: "+notesError.message,true);setBusy(false);return;}
+    const payload={app:"Employee Attendance System",version:1,created_at:new Date().toISOString(),organization_id:profile.organization_id,employees,attendance,attendance_monthly_notes:allMonthlyNotes||[],overtime_entries:overtimeEntries,leave_requests:leaves,calendar_events:events};
     const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
     const fileName="attendance-backup-"+today()+".json";
     const path=profile.organization_id+"/"+Date.now()+"-"+fileName;
@@ -289,7 +307,7 @@ export default function App({profile}:{profile:Profile}){
     try{
       const raw=JSON.parse(await file.text());
       if(raw.organization_id!==profile.organization_id)throw new Error("This   ।");
-      const groups:[string,any[]][]=[["employees",raw.employees||[]],["attendance",raw.attendance||[]],["overtime_entries",raw.overtime_entries||[]],["leave_requests",raw.leave_requests||[]],["calendar_events",raw.calendar_events||[]]];
+      const groups:[string,any[]][]=[["employees",raw.employees||[]],["attendance",raw.attendance||[]],["attendance_monthly_notes",raw.attendance_monthly_notes||[]],["overtime_entries",raw.overtime_entries||[]],["leave_requests",raw.leave_requests||[]],["calendar_events",raw.calendar_events||[]]];
       for(const [table,rows] of groups){
         if(!rows.length)continue;
         const safe=rows.map(row=>{const copy={...row};delete copy.created_at;return copy;});
@@ -338,6 +356,7 @@ export default function App({profile}:{profile:Profile}){
           {days.map(d=>{const date=dateKey(new Date(year,month.getMonth(),d));const key=emp.id+"|"+date;const st=lookup.get(key)?.status||"";const isSelected=date===selectedDate;const draft=draftStatuses[key];return <td key={d} className={isSelected?"selected-date-cell":""}>{isSelected&&canManage?<div className="cell-editor"><StatusSelect value={draft===undefined?st:draft} disabled={busy} onChange={v=>stageStatus(emp.id,date,v)}/><button className="save-cell" disabled={busy||draft===undefined} onClick={()=>void saveStagedStatus(emp.id,date)}>{busy?"…":"Update"}</button></div>:<span className={"status-read "+(st?"day-"+st.replace("/","-"):"")}>{st||"—"}</span>}</td>;})}
           <td>{attendance.filter(a=>a.employee_id===emp.id&&PRESENT_STATUSES.includes(a.status)&&a.attendance_date>=first&&a.attendance_date<=last).length}</td><td>{attendance.filter(a=>a.employee_id===emp.id&&a.attendance_date>=first&&a.attendance_date<=last).reduce((sum,a)=>sum+(DUTY_HOURS[a.status]??0),0)} h</td></tr>)}
       </tbody></table></div>}
+      {tab==="month"&&<section className="panel monthly-notes"><h3>Monthly Notes · {MONTHS[month.getMonth()]} {year}</h3><p className="muted">Add employee-specific notes for leave adjustments, late document submission, or attendance corrections. Notes are saved separately for each employee and month.</p><div className="monthly-note-list">{filtered.map(emp=><div className="monthly-note-row" key={emp.id}><div className="monthly-note-employee"><b>{emp.employee_code} · {emp.full_name}</b><small>{emp.department||""}</small></div><textarea rows={2} value={draftMonthlyNotes[emp.id]??""} disabled={!canManage||busy} placeholder="Write a note for this employee and month..." onChange={e=>setDraftMonthlyNotes(prev=>({...prev,[emp.id]:e.target.value}))}/>{canManage&&<button className="save-cell" disabled={busy||((draftMonthlyNotes[emp.id]??"")===(monthlyNotes.find(n=>n.employee_id===emp.id)?.note||""))} onClick={()=>void saveMonthlyNote(emp.id)}>Save Note</button>}</div>)}</div></section>}
       {tab==="year"&&<><div className="calendar-year-picker"><label>Calendar  <select value={year} onChange={e=>setMonth(new Date(Number(e.target.value),month.getMonth(),1))}>{Array.from({length:9},(_,i)=>new Date().getFullYear()-4+i).map(y=><option key={y} value={y}>{y}</option>)}</select></label><span className="muted">Calendar to view  Name select</span></div><div className="employee-list calendar-employee-list">{filtered.map(emp=><div className="calendar-employee" key={emp.id}><button className={"calendar-employee-toggle "+(expandedCalendarEmployee===emp.id?"expanded":"")} onClick={()=>setExpandedCalendarEmployee(prev=>prev===emp.id?null:emp.id)}><span><b>{emp.employee_code}</b><strong>{emp.full_name}</strong></span><span>{expandedCalendarEmployee===emp.id?"Hide calendar":"View calendar"} <span className="toggle-mark">{expandedCalendarEmployee===emp.id?"−":"＋"}</span></span></button>{expandedCalendarEmployee===emp.id&&<article className="employee-year calendar-expanded"><div className="months">{years.map(i=>{const count=new Date(year,i+1,0).getDate();const offset=new Date(year,i,1).getDay();return <div className="mini-month" key={i}><b>{MONTHS[i]}</b><div className="days"><span className="weekday-label">Sun</span><span className="weekday-label">Mon</span><span className="weekday-label">Tue</span><span className="weekday-label">Wed</span><span className="weekday-label">Thu</span><span className="weekday-label friday-label">Fri</span><span className="weekday-label">Sat</span>{Array.from({length:offset},(_,n)=><span key={"blank"+n}/>)}{Array.from({length:count},(_,d)=>{const date=dateKey(new Date(year,i,d+1));const st=lookup.get(emp.id+"|"+date)?.status||"";return <span title={date+" "+(LABELS[st]||"")} className={(new Date(date+"T00:00:00").getDay()===5?"friday-cell ":"")+(st?"day-"+st.replace("/","-"):"")} key={d}>{st&&st!=="P"?st:d+1}</span>;})}</div></div>;})}</div><div className="totals">{totals(emp.id).map(t=><span key={t.s}>{t.s}: <b>{t.n}</b></span>)}</div></article>}</div>)}</div></>}
       {tab==="ot-calendar"&&<><div className="calendar-year-picker"><label>OT Calendar  <select value={year} onChange={e=>setMonth(new Date(Number(e.target.value),month.getMonth(),1))}>{Array.from({length:9},(_,i)=>new Date().getFullYear()-4+i).map(y=><option key={y} value={y}>{y}</option>)}</select></label><strong> Total OT: {yearOTTotal.toLocaleString("en-US")} Hours</strong></div><div className="employee-list calendar-employee-list">{filtered.map(emp=><div className="calendar-employee" key={emp.id}><button className={"calendar-employee-toggle "+(expandedCalendarEmployee===emp.id?"expanded":"")} onClick={()=>setExpandedCalendarEmployee(prev=>prev===emp.id?null:emp.id)}><span><b>{emp.employee_code}</b><strong>{emp.full_name}</strong></span><span>{expandedCalendarEmployee===emp.id?"Hide calendar":"View calendar"} <span className="toggle-mark">{expandedCalendarEmployee===emp.id?"−":"＋"}</span></span></button>{expandedCalendarEmployee===emp.id&&<article className="employee-year calendar-expanded"><div className="months">{years.map(i=>{const count=new Date(year,i+1,0).getDate();const offset=new Date(year,i,1).getDay();return <div className="mini-month" key={i}><b>{MONTHS[i]}</b><div className="days"><span className="weekday-label">Sun</span><span className="weekday-label">Mon</span><span className="weekday-label">Tue</span><span className="weekday-label">Wed</span><span className="weekday-label">Thu</span><span className="weekday-label friday-label">Fri</span><span className="weekday-label">Sat</span>{Array.from({length:offset},(_,n)=><span key={"blank"+n}/>)}{Array.from({length:count},(_,d)=>{const date=dateKey(new Date(year,i,d+1));const entry=overtimeLookup.get(emp.id+"|"+date);return <span title={date+(entry?" · "+entry.hours+" Hours":"")} className={(new Date(date+"T00:00:00").getDay()===5?"friday-cell ":"")+"ot-calendar-hour"} key={d}><b className="ot-calendar-date">{d+1}</b>{entry&&<small className="ot-calendar-hours">{Number(entry.hours).toLocaleString("en-US")}h</small>}</span>;})}</div></div>;})}</div><div className="ot-employee-total"> Total OT: {overtimeEntries.filter(o=>o.employee_id===emp.id&&o.overtime_date>=yearFirst&&o.overtime_date<=yearLast).reduce((sum,o)=>sum+Number(o.hours||0),0).toLocaleString("en-US")} Hours</div></article>}</div>)}</div></>}
       {tab==="mine"&&<><div className="toolbar"><div className="month-nav"><button onClick={()=>setMonth(new Date(year,month.getMonth()-1,1))}><ChevronLeft/></button><b>{MONTHS[month.getMonth()]} {year}</b><button onClick={()=>setMonth(new Date(year,month.getMonth()+1,1))}><ChevronRight/></button></div></div><div className="employee-year"><h3>{selectedEmployeeRow?.full_name||profile.display_name||"My "} · {selectedEmployeeRow?.employee_code||""}</h3><div className="months">{years.map(i=><div className="mini-month" key={i}><b>{MONTHS[i]}</b><div className="days"><span className="weekday-label">Sun</span><span className="weekday-label">Mon</span><span className="weekday-label">Tue</span><span className="weekday-label">Wed</span><span className="weekday-label">Thu</span><span className="weekday-label friday-label">Fri</span><span className="weekday-label">Sat</span>{Array.from({length:new Date(year,i+1,0).getDate()},(_,d)=>{const date=dateKey(new Date(year,i,d+1));const st=lookup.get((profile.employee_id||"")+"|"+date)?.status||"";return <span key={d} title={date+" "+(LABELS[st]||"")} className={st?"day-"+st.replace("/","-"):""}>{st&&st!=="P"?st:d+1}</span>;})}</div></div>)}</div><div className="totals">{totals(profile.employee_id||"").map(t=><span key={t.s}>{t.s}: <b>{t.n}</b></span>)}</div></div><h3>My Leave Records</h3><LeaveTable leaves={leaves.filter(l=>l.employee_id===profile.employee_id)} employeeMap={employeeMap}/></>}
