@@ -23,6 +23,11 @@ type Leave = {
 type Event = { id:string; event_date:string; event_type:string; title:string; notes:string|null };
 type UserProfile = { user_id:string; organization_id:string; role:string; employee_id:string|null; display_name:string|null };
 type BackupRow = { id:string; file_name:string; storage_path:string; file_size:number; created_at:string };
+type AppDataCache = {version:number; savedAt:number; employees:Employee[]; attendance:Attendance[]; dailyNotes:DailyNote[]; overtimeEntries:OvertimeEntry[]; leaves:Leave[]; events:Event[]; users:UserProfile[]; backups:BackupRow[]};
+function appCacheKey(userId:string,organizationId:string,year:number){return "shovonote:data-cache:v1:"+organizationId+":"+userId+":"+year;}
+function readAppCache(userId:string,organizationId:string,year:number):AppDataCache|null{
+  try{const raw=localStorage.getItem(appCacheKey(userId,organizationId,year));if(!raw)return null;const parsed=JSON.parse(raw) as AppDataCache;if(parsed.version!==1||!Array.isArray(parsed.employees)||!Array.isArray(parsed.attendance))return null;return parsed;}catch{return null;}
+}
 
 const STATUSES = ["P","P1","P2","A","C/L","C/L2","O/L","O/L2","S/L","H","L/O","W/O","L/L","H/L","OT","LL/2"];
 const LABELS:Record<string,string> = {P:"Present · 8 Hours",P1:"Present · 1 Hour Short Leave",P2:"Present · 2 Hours Short Leave",A:"Absent","C/L":"Casual Leave","C/L2":"Half-day Casual Leave","O/L":"Official Leave","O/L2":"Half-day Official Leave","S/L":"Sick Leave",H:"Holiday","L/O":"Lay Off","W/O":"Weekly Off","L/L":"Compensatory Weekly Off (Friday Work Exchange)","H/L":"Half-day Leave",OT:"Legacy Overtime Code","LL/2":"Legacy Leave Code"};
@@ -63,16 +68,17 @@ function Field({label,children}:{label:string;children:ReactNode}){
 export default function App({profile}:{profile:Profile}){
   const canManage=["owner","admin"].includes(profile.role);
   const canSeeAll=["owner","admin","viewer"].includes(profile.role);
-  const [employees,setEmployees]=useState<Employee[]>([]);
-  const [attendance,setAttendance]=useState<Attendance[]>([]);
-  const [dailyNotes,setDailyNotes]=useState<DailyNote[]>([]);
+  const [cacheSeed]=useState(()=>{try{const saved=localStorage.getItem("shovonote:last-month:"+profile.user_id);const cachedYear=saved?new Date(saved+"T00:00:00").getFullYear():new Date().getFullYear();return readAppCache(profile.user_id,profile.organization_id,cachedYear);}catch{return null;}});
+  const [employees,setEmployees]=useState<Employee[]>(cacheSeed?.employees||[]);
+  const [attendance,setAttendance]=useState<Attendance[]>(cacheSeed?.attendance||[]);
+  const [dailyNotes,setDailyNotes]=useState<DailyNote[]>(cacheSeed?.dailyNotes||[]);
   const [draftDailyNotes,setDraftDailyNotes]=useState<Record<string,string>>({});
-  const [overtimeEntries,setOvertimeEntries]=useState<OvertimeEntry[]>([]);
+  const [overtimeEntries,setOvertimeEntries]=useState<OvertimeEntry[]>(cacheSeed?.overtimeEntries||[]);
   const [draftOT,setDraftOT]=useState<Record<string,string>>({});
-  const [leaves,setLeaves]=useState<Leave[]>([]);
-  const [events,setEvents]=useState<Event[]>([]);
-  const [users,setUsers]=useState<UserProfile[]>([]);
-  const [backups,setBackups]=useState<BackupRow[]>([]);
+  const [leaves,setLeaves]=useState<Leave[]>(cacheSeed?.leaves||[]);
+  const [events,setEvents]=useState<Event[]>(cacheSeed?.events||[]);
+  const [users,setUsers]=useState<UserProfile[]>(cacheSeed?.users||[]);
+  const [backups,setBackups]=useState<BackupRow[]>(cacheSeed?.backups||[]);
   const [tab,setTab]=useState(()=>{try{return localStorage.getItem("shovonote:last-tab:"+profile.user_id)||"month";}catch{return "month";}});
   const [month,setMonth]=useState(()=>{try{const saved=localStorage.getItem("shovonote:last-month:"+profile.user_id);return saved?new Date(saved+"T00:00:00"):new Date();}catch{return new Date();}});
   const [busy,setBusy]=useState(false);
@@ -112,47 +118,49 @@ export default function App({profile}:{profile:Profile}){
 
   function message(text:string,error=false){setNotice(text);setNoticeError(error);}
   async function load(){
-    setBusy(true);setNotice("");
-    const empQuery=supabase.from("employees").select("id,employee_code,full_name,department,designation,email,phone,joining_date,emergency_contact,is_active").order("employee_code");
-    const {data:empData,error:empError}=await empQuery;
-    if(empError)message("Employee : "+empError.message,true);
-    const sorted=sortEmployees((empData||[]) as Employee[]);setEmployees(sorted);
-    if(!selectedEmployee&&sorted[0])setSelectedEmployee(profile.employee_id||sorted[0].id);
-    // Supabase Data API returns at most 1,000 rows per request by default.
-    // Fetch every page so later months are not silently shown as blank.
-    let allAttendance:Attendance[]=[];
-    let attError: any = null;
-    for(let offset=0;;offset+=1000){
-      const page=await supabase.from("attendance").select("id,employee_id,attendance_date,status,note")
-        .gte("attendance_date",yearFirst).lte("attendance_date",yearLast)
-        .order("attendance_date").order("employee_id").range(offset,offset+999);
-      if(page.error){attError=page.error;break;}
-      const rows=(page.data||[]) as Attendance[];
-      allAttendance=allAttendance.concat(rows);
-      if(rows.length<1000)break;
+    const cached=readAppCache(profile.user_id,profile.organization_id,year);
+    if(cached){
+      setEmployees(cached.employees);setAttendance(cached.attendance);setDailyNotes(cached.dailyNotes||[]);
+      setDraftDailyNotes(Object.fromEntries((cached.dailyNotes||[]).map(n=>[n.employee_id+"|"+n.note_date,n.note||""])));
+      setOvertimeEntries(cached.overtimeEntries||[]);setLeaves(cached.leaves||[]);setEvents(cached.events||[]);
+      if(canManage){setUsers(cached.users||[]);setBackups(cached.backups||[]);}
     }
-    if(attError)message(" Data: "+attError.message,true);
-    setAttendance(allAttendance);
-    const {data:dailyNoteData,error:dailyNoteError}=await supabase.from("attendance_daily_notes").select("id,employee_id,note_date,note").gte("note_date",yearFirst).lte("note_date",yearLast);
-    if(dailyNoteError)message("Daily Notes: "+dailyNoteError.message,true);
-    const dailyNoteRows=(dailyNoteData||[]) as DailyNote[];setDailyNotes(dailyNoteRows);
-    setDraftDailyNotes(Object.fromEntries(dailyNoteRows.map(n=>[n.employee_id+"|"+n.note_date,n.note||""])));
-    let allOT:OvertimeEntry[]=[];let otError:any=null;
-    for(let offset=0;;offset+=1000){const page=await supabase.from("overtime_entries").select("id,employee_id,overtime_date,hours").gte("overtime_date",yearFirst).lte("overtime_date",yearLast).order("overtime_date").order("employee_id").range(offset,offset+999);if(page.error){otError=page.error;break;}const rows=(page.data||[]) as OvertimeEntry[];allOT=allOT.concat(rows);if(rows.length<1000)break;}
-    if(otError)message("OT Data: "+otError.message,true);setOvertimeEntries(allOT);
-    const {data:leaveData,error:leaveError}=await supabase.from("leave_requests").select("id,employee_id,leave_type,start_date,end_date,reason,status,created_at").order("created_at",{ascending:false});
-    if(leaveError)message("Leave Data: "+leaveError.message,true);setLeaves((leaveData||[]) as Leave[]);
-    const {data:eventData,error:eventError}=await supabase.from("calendar_events").select("id,event_date,event_type,title,notes").gte("event_date",yearFirst).lte("event_date",yearLast).order("event_date");
-    if(eventError)message("Calendar: "+eventError.message,true);setEvents((eventData||[]) as Event[]);
-    if(canManage){
-      const {data:userData}=await supabase.from("profiles").select("user_id,organization_id,role,employee_id,display_name").order("display_name");
-      setUsers((userData||[]) as UserProfile[]);
-      const {data:backupData}=await supabase.from("backup_files").select("id,file_name,storage_path,file_size,created_at").order("created_at",{ascending:false});
-      setBackups((backupData||[]) as BackupRow[]);
+    setBusy(!cached);setNotice("");
+    const fetchPaged=async<T,>(table:string,select:string,dateColumn:string):Promise<{rows:T[];error:any}>=>{
+      let rows:T[]=[];
+      for(let offset=0;;offset+=1000){
+        const page=await supabase.from(table).select(select).gte(dateColumn,yearFirst).lte(dateColumn,yearLast).order(dateColumn).order("employee_id").range(offset,offset+999);
+        if(page.error)return {rows,error:page.error};
+        const part=(page.data||[]) as T[];rows=rows.concat(part);if(part.length<1000)break;
+      }
+      return {rows,error:null};
+    };
+    const tasks=await Promise.all([
+      supabase.from("employees").select("id,employee_code,full_name,department,designation,email,phone,joining_date,emergency_contact,is_active").order("employee_code"),
+      fetchPaged<Attendance>("attendance","id,employee_id,attendance_date,status,note","attendance_date"),
+      supabase.from("attendance_daily_notes").select("id,employee_id,note_date,note").gte("note_date",yearFirst).lte("note_date",yearLast),
+      fetchPaged<OvertimeEntry>("overtime_entries","id,employee_id,overtime_date,hours","overtime_date"),
+      supabase.from("leave_requests").select("id,employee_id,leave_type,start_date,end_date,reason,status,created_at").order("created_at",{ascending:false}),
+      supabase.from("calendar_events").select("id,event_date,event_type,title,notes").gte("event_date",yearFirst).lte("event_date",yearLast).order("event_date"),
+      canManage?supabase.from("profiles").select("user_id,organization_id,role,employee_id,display_name").order("display_name"):Promise.resolve({data:cached?.users||[],error:null}),
+      canManage?supabase.from("backup_files").select("id,file_name,storage_path,file_size,created_at").order("created_at",{ascending:false}):Promise.resolve({data:cached?.backups||[],error:null})
+    ]);
+    const [empRes,attRes,noteRes,otRes,leaveRes,eventRes,userRes,backupRes]=tasks;
+    let refreshOk=true;
+    if(empRes.error){message("Employee: "+empRes.error.message,true);refreshOk=false;}else{const sorted=sortEmployees((empRes.data||[]) as Employee[]);setEmployees(sorted);if(!selectedEmployee&&sorted[0])setSelectedEmployee(profile.employee_id||sorted[0].id);}
+    if(attRes.error){message("Attendance: "+attRes.error.message,true);refreshOk=false;}else setAttendance(attRes.rows);
+    if(noteRes.error){message("Daily Notes: "+noteRes.error.message,true);refreshOk=false;}else{const rows=(noteRes.data||[]) as DailyNote[];setDailyNotes(rows);setDraftDailyNotes(Object.fromEntries(rows.map(n=>[n.employee_id+"|"+n.note_date,n.note||""])));}
+    if(otRes.error){message("OT Data: "+otRes.error.message,true);refreshOk=false;}else setOvertimeEntries(otRes.rows);
+    if(leaveRes.error){message("Leave Data: "+leaveRes.error.message,true);refreshOk=false;}else setLeaves((leaveRes.data||[]) as Leave[]);
+    if(eventRes.error){message("Calendar: "+eventRes.error.message,true);refreshOk=false;}else setEvents((eventRes.data||[]) as Event[]);
+    if(canManage){if(userRes.error||backupRes.error)refreshOk=false;if(!userRes.error)setUsers((userRes.data||[]) as UserProfile[]);if(!backupRes.error)setBackups((backupRes.data||[]) as BackupRow[]);}
+    if(refreshOk){
+      const snapshot:AppDataCache={version:1,savedAt:Date.now(),employees:sortEmployees((empRes.data||[]) as Employee[]),attendance:attRes.rows,dailyNotes:(noteRes.data||[]) as DailyNote[],overtimeEntries:otRes.rows,leaves:(leaveRes.data||[]) as Leave[],events:(eventRes.data||[]) as Event[],users:canManage?((userRes.data||[]) as UserProfile[]):(cached?.users||[]),backups:canManage?((backupRes.data||[]) as BackupRow[]):(cached?.backups||[])};
+      try{localStorage.setItem(appCacheKey(profile.user_id,profile.organization_id,year),JSON.stringify(snapshot));}catch{message("Data refreshed, but device storage is full. Clear browser cache to enable offline cache.",true);}
     }
     setBusy(false);
   }
-  useEffect(()=>{void load();},[year,month.getMonth(),profile.user_id]);
+  useEffect(()=>{void load();},[year,profile.user_id]);
   useEffect(()=>{try{localStorage.setItem("shovonote:last-tab:"+profile.user_id,tab);localStorage.setItem("shovonote:last-month:"+profile.user_id,dateKey(new Date(year,month.getMonth(),1)));localStorage.setItem("shovonote:last-date:"+profile.user_id,selectedDate);localStorage.setItem("shovonote:expanded-calendar-employee:"+profile.user_id,expandedCalendarEmployee||"");}catch{/* Browser storage may be unavailable; keep the current session working. */}},[tab,year,month.getMonth(),selectedDate,expandedCalendarEmployee,profile.user_id]);
   const scrollRestoreStarted=useRef(false);
   useEffect(()=>{
