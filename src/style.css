@@ -981,3 +981,44 @@ button.note-open{
   .modal-actions,
   .employee-row .actions{column-gap:8px!important;row-gap:7px!important}
 }
+
+
+/* Narrow button side padding and center attendance status labels */
+.top-navigation button{
+  padding-left:6px!important;
+  padding-right:6px!important;
+}
+.toolbar .actions>button,
+.topbar .actions>button,
+.month-nav>button,
+.modal-actions>button,
+.employee-row .actions>button,
+.table-wrap button.save-cell,
+.table-wrap button.note-open{
+  padding-left:4px!important;
+  padding-right:4px!important;
+}
+.cell-editor .status,
+.table-wrap select.status{
+  text-align:center!important;
+  text-align-last:center!important;
+  padding-left:0!important;
+  padding-right:0!important;
+}
+.table-wrap .status-read{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+  vertical-align:middle!important;
+}
+.table-wrap .status-read .p-ot-subtext{
+  text-align:center!important;
+}
+@media(max-width:650px){
+  .top-navigation button{padding-left:4px!important;padding-right:4px!important}
+  .toolbar .actions>button,
+  .topbar .actions>button,
+  .modal-actions>button,
+  .employee-row .actions>button{padding-left:4px!important;padding-right:4px!important}
+}
