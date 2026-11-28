@@ -858,3 +858,101 @@ button.note-open{
   }
   .table-wrap td.name-cell small{font-size:8px!important}
 }
+
+
+/* Final readable sizing: stronger selectors override earlier compact rules */
+.top-navigation{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:8px!important;
+  padding:8px!important;
+  overflow:visible!important;
+}
+.top-navigation button{
+  flex:0 1 auto!important;
+  width:auto!important;
+  min-width:0!important;
+  min-height:32px!important;
+  padding:5px 8px!important;
+  margin:0!important;
+  display:inline-flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:5px!important;
+  font-size:10px!important;
+  line-height:1.2!important;
+  white-space:normal!important;
+  border:1px solid #d7e3da!important;
+}
+.top-navigation button svg{width:13px!important;height:13px!important;flex:none!important}
+.toolbar .actions,
+.topbar .actions,
+.month-nav,
+.modal-actions,
+.employee-row .actions{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  align-items:center!important;
+  gap:8px!important;
+}
+.toolbar .actions>button,
+.topbar .actions>button,
+.month-nav>button,
+.modal-actions>button,
+.employee-row .actions>button,
+.table-wrap button.save-cell,
+.table-wrap button.note-open{
+  flex:0 0 auto!important;
+  min-width:0!important;
+  min-height:27px!important;
+  padding:4px 7px!important;
+  margin:0!important;
+  font-size:9px!important;
+  line-height:1.15!important;
+  white-space:nowrap!important;
+}
+.table-wrap table tbody tr td.name-cell{
+  font-size:11px!important;
+  font-weight:800!important;
+  line-height:1.2!important;
+  color:#183f31!important;
+  letter-spacing:.005em!important;
+  overflow-wrap:normal!important;
+  word-break:normal!important;
+}
+.table-wrap table tbody tr td.name-cell small{
+  display:block!important;
+  margin-top:2px!important;
+  font-size:8px!important;
+  font-weight:600!important;
+  line-height:1.1!important;
+}
+@media(min-width:851px){
+  .table-wrap table th:nth-child(2),
+  .table-wrap table td:nth-child(2){
+    width:120px!important;
+    min-width:120px!important;
+    max-width:120px!important;
+  }
+  .table-wrap table tbody tr td.name-cell{font-size:10px!important;font-weight:800!important}
+}
+@media(max-width:650px){
+  .top-navigation{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:6px!important}
+  .top-navigation button{
+    width:100%!important;
+    min-height:34px!important;
+    padding:5px 3px!important;
+    font-size:9px!important;
+    flex-direction:row!important;
+  }
+  .toolbar .actions,
+  .topbar .actions,
+  .modal-actions,
+  .employee-row .actions{gap:7px!important}
+  .toolbar .actions>button,
+  .topbar .actions>button,
+  .modal-actions>button,
+  .employee-row .actions>button{min-height:28px!important;padding:4px 6px!important}
+  .table-wrap table tbody tr td.name-cell{font-size:11px!important;font-weight:800!important}
+}
