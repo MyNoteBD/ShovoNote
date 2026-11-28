@@ -956,3 +956,28 @@ button.note-open{
   .employee-row .actions>button{min-height:28px!important;padding:4px 6px!important}
   .table-wrap table tbody tr td.name-cell{font-size:11px!important;font-weight:800!important}
 }
+
+
+/* Add a little more horizontal breathing room between navigation and action buttons */
+.top-navigation{column-gap:11px!important;row-gap:8px!important}
+.top-navigation button{padding-left:10px!important;padding-right:10px!important}
+.toolbar .actions,
+.topbar .actions,
+.month-nav,
+.modal-actions,
+.employee-row .actions{column-gap:10px!important;row-gap:8px!important}
+.toolbar .actions>button,
+.topbar .actions>button,
+.month-nav>button,
+.modal-actions>button,
+.employee-row .actions>button,
+.table-wrap button.save-cell,
+.table-wrap button.note-open{margin-right:1px!important;margin-left:1px!important}
+@media(max-width:650px){
+  .top-navigation{column-gap:7px!important;row-gap:7px!important}
+  .top-navigation button{padding-left:5px!important;padding-right:5px!important}
+  .toolbar .actions,
+  .topbar .actions,
+  .modal-actions,
+  .employee-row .actions{column-gap:8px!important;row-gap:7px!important}
+}
