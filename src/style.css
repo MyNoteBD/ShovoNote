@@ -627,3 +627,14 @@ footer{font-size:10px;font-weight:600;letter-spacing:.04em;color:#89978f;padding
 .cell-editor .status.st-C-L2,
 .cell-editor .status.st-O-L,
 .cell-editor .status.st-O-L2{background:#fff0d7!important;color:#865a15!important;border:1px solid #e8d5ae!important}
+
+
+/* Denser attendance rows to show more employees per screen */
+.table-wrap table th,.table-wrap table td{padding:4px 4px!important;line-height:1.15}
+.table-wrap table tbody tr{height:28px}
+.table-wrap .name-cell{line-height:1.1}
+.table-wrap .name-cell small{margin-top:1px;font-size:9px;line-height:1.05}
+.cell-editor .save-cell{min-height:23px;padding:2px 5px;font-size:8px;line-height:1}
+.cell-editor .status{min-height:24px!important;padding:2px 1px!important;font-size:8px!important}
+@media(min-width:851px){.table-wrap{scrollbar-width:auto;scrollbar-color:#9aafa3 #edf2ee}.table-wrap::-webkit-scrollbar{height:13px}.table-wrap::-webkit-scrollbar-thumb{background:#9aafa3;border:3px solid #edf2ee;border-radius:10px}.table-wrap::-webkit-scrollbar-track{background:#edf2ee;border-radius:10px}}
+@media(max-width:650px){.table-wrap table th,.table-wrap table td{padding:3px 3px!important}.table-wrap table tbody tr{height:25px}}
