@@ -728,3 +728,41 @@ footer{font-size:10px;font-weight:600;letter-spacing:.04em;color:#89978f;padding
   .table-wrap .name-cell{font-size:9px!important}
   .table-wrap .name-cell small{font-size:8px!important}
 }
+
+
+/* Slightly reduce button footprint after tightening the register layout */
+.top-navigation button{
+  min-height:34px;
+  padding:6px 9px;
+  font-size:11px;
+  gap:5px;
+}
+.top-navigation button svg{width:14px;height:14px}
+.toolbar .actions>button,
+.topbar .actions>button,
+.month-nav>button,
+.employee-row .actions>button,
+.modal-actions>button{
+  min-height:30px;
+  padding:5px 8px;
+  font-size:10px;
+  gap:5px;
+}
+.toolbar .actions>button svg,
+.topbar .actions>button svg,
+.employee-row .actions>button svg,
+.modal-actions>button svg{width:13px;height:13px}
+.cell-editor .save-cell{
+  min-height:21px!important;
+  padding:2px 4px!important;
+  font-size:7.5px!important;
+}
+@media(max-width:650px){
+  .top-navigation button{min-height:38px;padding:5px 3px;font-size:9px;gap:3px}
+  .top-navigation button svg{width:15px;height:15px}
+  .toolbar .actions>button,
+  .topbar .actions>button,
+  .employee-row .actions>button,
+  .modal-actions>button{min-height:29px;padding:5px 7px;font-size:10px}
+  .cell-editor .save-cell{min-height:21px!important;padding:2px 4px!important;font-size:7.5px!important}
+}
