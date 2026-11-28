@@ -284,13 +284,48 @@ export default function App({profile}:{profile:Profile}){
     if(error)message(error.message,true);else message("Selected Date All Active Employee "+status+"  ");
     await load();setBusy(false);
   }
-  function exportMonth(){
-    const rows:unknown[][]=[["Control No","Employee","Department","Date","Status","Status Name"]];
-    employees.filter(e=>e.is_active).forEach(e=>days.forEach(d=>{
-      const date=dateKey(new Date(year,month.getMonth(),d));const status=lookup.get(e.id+"|"+date)?.status||"";
-      rows.push([e.employee_code,e.full_name,e.department,date,status,LABELS[status]||""]);
-    }));
-    csvDownload(rows,"attendance-"+first.slice(0,7)+".csv");
+  function monthlyRegisterHtml(){
+    const roster=sortEmployees(employees.filter(e=>e.is_active&&(!profile.employee_id||canSeeAll||e.id===profile.employee_id)));
+    const esc=(value:unknown)=>String(value??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+    const statusStyle=(status:string,date:string)=>{
+      if(!status)return new Date(date+"T00:00:00").getDay()===5?"background:#f1f2f2;color:#777;":"";
+      if(status==="H"||status==="W/O"||status==="L/L")return "background:#fde9e9;color:#a23b42;font-weight:bold;";
+      if(["C/L","C/L2","O/L","O/L2","S/L","H/L","LL/2"].includes(status))return "background:#fff1d8;color:#805b1c;font-weight:bold;";
+      if(PRESENT_STATUSES.includes(status))return "background:#e8f4eb;color:#1c6545;font-weight:bold;";
+      if(status==="A")return "background:#fce9e6;color:#a13b2d;font-weight:bold;";
+      return "background:#f0f3f1;color:#53645b;font-weight:bold;";
+    };
+    const dayHeaders=days.map(d=>{const date=dateKey(new Date(year,month.getMonth(),d));return '<th class="day"><span>'+weekday(date)+'</span><b>'+d+'</b></th>';}).join("");
+    const body=roster.map(emp=>{
+      const records=days.map(d=>{const date=dateKey(new Date(year,month.getMonth(),d));const status=lookup.get(emp.id+"|"+date)?.status||"";return {date,status};});
+      const present=records.filter(x=>PRESENT_STATUSES.includes(x.status)).length;
+      const casual=records.filter(x=>x.status==="C/L").length+records.filter(x=>x.status==="C/L2").length*.5;
+      const official=records.filter(x=>x.status==="O/L").length+records.filter(x=>x.status==="O/L2").length*.5;
+      const sick=records.filter(x=>x.status==="S/L").length;
+      const absent=records.filter(x=>x.status==="A").length;
+      const duty=records.reduce((sum,x)=>sum+(DUTY_HOURS[x.status]??0),0);
+      const ot=overtimeEntries.filter(x=>x.employee_id===emp.id&&x.overtime_date>=first&&x.overtime_date<=last).reduce((sum,x)=>sum+Number(x.hours||0),0);
+      const cells=records.map(x=>'<td class="mark" style="'+statusStyle(x.status,x.date)+'">'+esc(x.status)+'</td>').join("");
+      return '<tr><td class="code">'+esc(emp.employee_code)+'</td><td class="employee">'+esc(emp.full_name)+'</td><td class="dept">'+esc(emp.department||"")+'</td>'+cells+
+        '<td class="total">'+present+'</td><td class="total">'+casual+'</td><td class="total">'+official+'</td><td class="total">'+sick+'</td><td class="total">'+absent+'</td><td class="total">'+duty+'</td><td class="total">'+ot+'</td></tr>';
+    }).join("");
+    const dailyPresent=days.map(d=>{const date=dateKey(new Date(year,month.getMonth(),d));return '<td class="mark total">'+roster.filter(emp=>PRESENT_STATUSES.includes(lookup.get(emp.id+"|"+date)?.status||"")).length+'</td>';}).join("");
+    const grandPresent=roster.reduce((sum,emp)=>sum+days.filter(d=>PRESENT_STATUSES.includes(lookup.get(emp.id+"|"+dateKey(new Date(year,month.getMonth(),d)))?.status||"")).length,0);
+    const grandDuty=roster.reduce((sum,emp)=>sum+days.reduce((n,d)=>n+(DUTY_HOURS[lookup.get(emp.id+"|"+dateKey(new Date(year,month.getMonth(),d)))?.status||""]??0),0),0);
+    const grandOT=overtimeEntries.filter(x=>x.overtime_date>=first&&x.overtime_date<=last&&roster.some(e=>e.id===x.employee_id)).reduce((sum,x)=>sum+Number(x.hours||0),0);
+    return '<!doctype html><html><head><meta charset="utf-8"><title>Attendance Register - '+MONTHS[month.getMonth()]+' '+year+'</title><style>'+
+      '@page{size:A3 landscape;margin:8mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#1f3329;margin:0}h1{font-size:19px;text-align:center;margin:0 0 4px;letter-spacing:.5px}h2{font-size:14px;text-align:center;margin:0 0 5px;color:#315744}.meta{text-align:center;font-size:9px;margin-bottom:10px;color:#52685e}.summary{display:flex;justify-content:space-between;font-size:9px;margin:5px 0 8px}.register{width:100%;border-collapse:collapse;table-layout:fixed}.register th,.register td{border:1px solid #9eada4;padding:3px 2px;text-align:center;font-size:8px;line-height:1.15}.register thead th{background:#e8f0ea;color:#254a38;font-weight:bold}.register th.day{width:19px}.register th.day span{display:block;font-size:6px;color:#66796d}.register th.day b{display:block;font-size:8px}.register .code{width:42px;font-weight:bold}.register .employee{width:125px;text-align:left;padding-left:5px;font-weight:bold}.register .dept{width:58px}.register .mark{width:19px}.register .total{background:#f0f4f1;font-weight:bold;width:35px}.register tbody tr:nth-child(even){background:#fafcfb}.register tfoot td{background:#eaf1ec;font-weight:bold}.legend{font-size:8px;margin-top:8px;line-height:1.7}.legend b{margin-right:8px}.footnote{font-size:7px;color:#607268;margin-top:5px}@media screen{body{padding:16px}.register{min-width:1100px}.sheet{overflow:auto}}'+
+      '</style></head><body><h1>EMPLOYEE ATTENDANCE REGISTER</h1><h2>'+MONTHS[month.getMonth()].toUpperCase()+' '+year+'</h2><div class="meta">Monthly Attendance &amp; Duty Record · ShovoNote</div><div class="summary"><span>Total Employees: <b>'+roster.length+'</b></span><span>Present Entries: <b>'+grandPresent+'</b></span><span>Total Duty Hours: <b>'+grandDuty+'</b></span><span>Total OT Hours: <b>'+grandOT+'</b></span></div><div class="sheet"><table class="register"><thead><tr><th rowspan="2">Control<br>No.</th><th rowspan="2">Employee Name</th><th rowspan="2">Dept.</th>'+days.map(d=>'<th class="day"><span>'+weekday(dateKey(new Date(year,month.getMonth(),d)))+'</span></th>').join("")+'<th rowspan="2">Present</th><th rowspan="2">C/L</th><th rowspan="2">O/L</th><th rowspan="2">S/L</th><th rowspan="2">Absent</th><th rowspan="2">Duty<br>Hrs</th><th rowspan="2">OT<br>Hrs</th></tr><tr>'+days.map(d=>'<th class="day"><b>'+d+'</b></th>').join("")+'</tr></thead><tbody>'+body+'</tbody><tfoot><tr><td colspan="3">Daily Present</td>'+dailyPresent+'<td colspan="7">Month Summary</td></tr></tfoot></table></div><div class="legend"><b>Status Legend:</b> P = Present · P1/P2 = Short Leave · A = Absent · C/L = Casual Leave · C/L2 = Half-day Casual Leave · O/L = Official Leave · O/L2 = Half-day Official Leave · S/L = Sick Leave · H = Holiday · W/O = Weekly Off · L/L = Compensatory Off · H/L = Half-day Leave · L/O = Lay Off</div><div class="footnote">Blank cells indicate no attendance entry. Duty hours are calculated from saved attendance statuses. OT hours are shown separately.</div></body></html>';
+  }
+  function exportMonthExcel(){
+    downloadBlob(monthlyRegisterHtml(),"Attendance-"+first.slice(0,7)+".xls","application/vnd.ms-excel;charset=utf-8");
+    message("Monthly Excel register exported.");
+  }
+  function exportMonthPdf(){
+    const printWindow=window.open("","_blank");
+    if(!printWindow){message("Allow pop-ups to export the monthly PDF.",true);return;}
+    printWindow.document.open();printWindow.document.write(monthlyRegisterHtml());printWindow.document.close();
+    window.setTimeout(()=>{printWindow.focus();printWindow.print();},500);
   }
   function exportEmployees(){
     csvDownload([["Control No","Name","Department","Designation","Phone","Email","Joining Date","Active"],...employees.map(e=>[e.employee_code,e.full_name,e.department,e.designation,e.phone,e.email,e.joining_date,e.is_active?"Yes":"No"])],"employees.csv");
@@ -429,7 +464,7 @@ export default function App({profile}:{profile:Profile}){
 
       {(tab==="month"||tab==="year")&&<div className="toolbar">
         <div className="month-nav"><button onClick={()=>setMonth(new Date(year,month.getMonth()-1,1))}><ChevronLeft/></button><b>{MONTHS[month.getMonth()]} {year}</b><button onClick={()=>setMonth(new Date(year,month.getMonth()+1,1))}><ChevronRight/></button></div>
-        <div className="actions">{canManage&&tab==="month"&&<><Field label="Entry "><input type="date" value={selectedDate} onChange={e=>{setSelectedDate(e.target.value);const d=new Date(e.target.value+"T00:00:00");setMonth(new Date(d.getFullYear(),d.getMonth(),1));}}/><small className="weekday-hint">{weekday(selectedDate)}day</small></Field><Field label="All  "><select value={bulkStatus} onChange={e=>setBulkStatus(e.target.value)}>{STATUSES.map(s=><option key={s} value={s}>{s} · {LABELS[s]}</option>)}</select></Field><button className="primary bulk-action" onClick={()=>void updateAll(bulkStatus)} disabled={busy}>Update All Status</button></>}<button onClick={exportMonth}><Download/> CSV</button></div>
+        <div className="actions">{canManage&&tab==="month"&&<><Field label="Entry "><input type="date" value={selectedDate} onChange={e=>{setSelectedDate(e.target.value);const d=new Date(e.target.value+"T00:00:00");setMonth(new Date(d.getFullYear(),d.getMonth(),1));}}/><small className="weekday-hint">{weekday(selectedDate)}day</small></Field><Field label="All  "><select value={bulkStatus} onChange={e=>setBulkStatus(e.target.value)}>{STATUSES.map(s=><option key={s} value={s}>{s} · {LABELS[s]}</option>)}</select></Field><button className="primary bulk-action" onClick={()=>void updateAll(bulkStatus)} disabled={busy}>Update All Status</button></>}<button onClick={exportMonthExcel}><FileDown/> Excel</button><button onClick={exportMonthPdf}><Printer/> PDF</button></div>
       </div>}
       {tab==="overtime"&&<><div className="toolbar"><div className="month-nav"><button onClick={()=>setMonth(new Date(year,month.getMonth()-1,1))}><ChevronLeft/></button><b>{MONTHS[month.getMonth()]} {year} · OT</b><button onClick={()=>setMonth(new Date(year,month.getMonth()+1,1))}><ChevronRight/></button></div><div className="actions">{canManage&&<><Field label="OT Entry "><input type="date" value={selectedDate} onChange={e=>{setSelectedDate(e.target.value);const d=new Date(e.target.value+"T00:00:00");setMonth(new Date(d.getFullYear(),d.getMonth(),1));}}/><small className="weekday-hint">{weekday(selectedDate)}day</small></Field><Field label="All OT Hours"><select value={bulkOTHours} onChange={e=>setBulkOTHours(e.target.value)}>{Array.from({length:48},(_,i)=>(i+1)*0.5).map(h=><option key={h} value={h}>{h} Hours</option>)}</select></Field><button className="primary bulk-action" onClick={()=>void updateAllOT()} disabled={busy}>Update All</button></>}<button onClick={exportOTMonth}><Download/> CSV</button></div></div><div className="ot-summary"><strong> Total OT: {monthOTTotal.toLocaleString("en-US")} Hours</strong><span>Selected : {selectedDate}</span></div><div className="table-wrap"><table><thead><tr><th>Control No</th><th> Name</th>{days.map(d=>{const date=dateKey(new Date(year,month.getMonth(),d));return <th key={d}><span className={"weekday-head "+(new Date(date+"T00:00:00").getDay()===5?"friday-label":"")}>{weekday(date)}</span><b>{d}</b></th>;})}<th>Total OT Hours</th></tr></thead><tbody>{filtered.map(emp=><tr key={emp.id}><td>{emp.employee_code}</td><td className="name-cell">{emp.full_name}<small>{emp.department||""}</small></td>{days.map(d=>{const date=dateKey(new Date(year,month.getMonth(),d));const key=emp.id+"|"+date;const entry=overtimeLookup.get(key);const draft=draftOT[key];const selected=date===selectedDate;return <td key={d} className={selected?"selected-date-cell":""}>{selected&&canManage?<div className="cell-editor"><input className="status ot-hour-input" type="number" min="0" max="24" step="0.25" placeholder="h" value={draft===undefined?(entry?String(entry.hours):""):draft} disabled={busy} onChange={e=>setDraftOT(prev=>({...prev,[key]:e.target.value}))}/><button className="save-cell" disabled={busy||draft===undefined} onClick={()=>void saveOvertime(emp.id,date,draft)}>Save</button></div>:<span className="ot-hour-value">{entry?Number(entry.hours).toLocaleString("en-US")+"h":""}</span>}</td>;})}<td>{overtimeEntries.filter(o=>o.employee_id===emp.id&&o.overtime_date>=first&&o.overtime_date<=last).reduce((sum,o)=>sum+Number(o.hours||0),0).toLocaleString("en-US")} h</td></tr>)}</tbody></table></div></>}
       {tab==="month"&&<div className="table-wrap"><table><thead><tr><th>Control No</th><th> Name</th>{days.map(d=>{const date=dateKey(new Date(year,month.getMonth(),d));return <th key={d}><span className={"weekday-head "+(new Date(date+"T00:00:00").getDay()===5?"friday-label":"")}>{weekday(date)}</span><b>{d}</b></th>;})}<th>Present</th><th>Duty Hours</th></tr></thead><tbody>
