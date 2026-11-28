@@ -1090,3 +1090,12 @@ button.note-open{
   .table-wrap table td.selected-date-cell{min-width:136px!important;width:136px!important}
   .table-wrap table td.selected-date-cell .cell-editor{gap:7px!important;column-gap:7px!important}
 }
+
+/* Explicit spacing for the monthly attendance action buttons */
+
+.table-wrap table tbody tr td.selected-date-cell > .cell-editor > button.save-cell{
+  margin-left:8px!important;
+}
+.table-wrap table tbody tr td.selected-date-cell > .cell-editor > button.note-open{
+  margin-left:8px!important;
+}
