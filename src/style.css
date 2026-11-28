@@ -345,3 +345,20 @@ footer{border-top:1px solid #e5ece7;margin-top:24px}
 .calendar-expanded .days span.has-day-note{position:relative}
 .calendar-note-dot{position:absolute;width:4px;height:4px;border-radius:50%;background:#16834d;right:2px;top:2px}
 @media(max-width:650px){.cell-editor{min-width:100px}.cell-editor .date-note-input{min-width:100px;font-size:11px}}
+
+
+/* Tighter attendance entry controls and tappable saved-note viewer */
+.cell-editor{min-width:88px;gap:3px}
+.cell-editor .status{width:90px!important;min-width:90px!important;min-height:32px;padding:4px 5px;font-size:10px}
+.cell-editor .save-cell{min-height:28px;padding:5px 6px;font-size:9px}
+.cell-editor .date-note-input{width:90px;min-width:90px;min-height:36px;padding:5px;font-size:9px}
+.cell-editor .note-save{min-height:26px}
+.note-indicator{border:0;background:transparent;padding:2px 4px;font-size:14px;cursor:pointer}
+.calendar-expanded .days span.has-day-note{cursor:pointer;outline:1px solid #b7ddc5;outline-offset:-1px}
+.calendar-expanded .days span.has-day-note:focus{outline:2px solid #176b50;outline-offset:1px}
+.note-viewer-text{white-space:pre-wrap;overflow-wrap:anywhere;padding:14px;background:#f5faf6;border:1px solid #e0ece4;border-radius:10px;color:#29463b;font-size:14px;line-height:1.6;min-height:56px}
+@media(max-width:650px){
+ .cell-editor{min-width:84px}
+ .cell-editor .status{width:86px!important;min-width:86px!important;min-height:34px;font-size:9px}
+ .cell-editor .date-note-input{width:86px;min-width:86px;min-height:38px;font-size:10px}
+}
