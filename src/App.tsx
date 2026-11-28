@@ -170,51 +170,60 @@ export default function App({profile}:{profile:Profile}){
   }
   useEffect(()=>{void load();},[year,profile.user_id]);
   useEffect(()=>{try{localStorage.setItem("shovonote:last-tab:"+profile.user_id,tab);localStorage.setItem("shovonote:last-month:"+profile.user_id,dateKey(new Date(year,month.getMonth(),1)));localStorage.setItem("shovonote:last-date:"+profile.user_id,selectedDate);localStorage.setItem("shovonote:expanded-calendar-employee:"+profile.user_id,expandedCalendarEmployee||"");}catch{/* Browser storage may be unavailable; keep the current session working. */}},[tab,year,month.getMonth(),selectedDate,expandedCalendarEmployee,profile.user_id]);
-  const scrollRestoreStarted=useRef(false);
+  const scrollRestorePending=useRef(true);
   const restoreScrollRef=useRef<()=>void>(()=>{});
   useEffect(()=>{
     const key="shovonote:scroll-position:"+profile.user_id;
     let frame=0;
+    let restoreFrame=0;
     let restoring=true;
-    let restoreTimers:number[]=[];
-    const readSaved=()=>{try{const value=Number(localStorage.getItem(key)||0);return Number.isFinite(value)&&value>0?value:0;}catch{return 0;}};
-    const save=()=>{if(restoring)return;try{localStorage.setItem(key,String(window.scrollY));}catch{}};
-    const onScroll=()=>{if(restoring||frame)return;frame=window.requestAnimationFrame(()=>{frame=0;save();});};
+    const readSaved=()=>{
+      try{const value=Number(localStorage.getItem(key)||0);return Number.isFinite(value)&&value>0?value:0;}catch{return 0;}
+    };
+    const save=()=>{
+      if(restoring)return;
+      try{localStorage.setItem(key,String(window.scrollY));}catch{}
+    };
+    const onScroll=()=>{
+      if(restoring||frame)return;
+      frame=window.requestAnimationFrame(()=>{frame=0;save();});
+    };
     const restore=()=>{
-      restoring=true;
-      restoreTimers.forEach(id=>window.clearTimeout(id));
-      restoreTimers=[];
+      if(restoreFrame)window.cancelAnimationFrame(restoreFrame);
       const target=readSaved();
       if(!target){restoring=false;return;}
-      [0,100,250,500,900,1500,2300].forEach((delay,index)=>{
-        const id=window.setTimeout(()=>{
-          if(document.visibilityState==="visible"&&Math.abs(window.scrollY-target)>2)window.scrollTo({top:target,behavior:"instant"});
-          if(index===6)restoring=false;
-        },delay);
-        restoreTimers.push(id);
+      restoreFrame=window.requestAnimationFrame(()=>{
+        restoreFrame=window.requestAnimationFrame(()=>{
+          if(document.visibilityState==="visible")window.scrollTo({top:target,behavior:"instant"});
+          restoring=false;
+          restoreFrame=0;
+        });
       });
     };
     restoreScrollRef.current=restore;
-    const onVisibility=()=>{if(document.visibilityState==="hidden"){if(frame){window.cancelAnimationFrame(frame);frame=0;}restoring=false;save();}else restore();};
+    const onPageHide=()=>{restoring=false;if(frame){window.cancelAnimationFrame(frame);frame=0;}save();};
+    const onVisibility=()=>{
+      if(document.visibilityState==="hidden")onPageHide();
+      else if(scrollRestorePending.current)restore();
+    };
     window.addEventListener("scroll",onScroll,{passive:true});
-    window.addEventListener("pagehide",()=>{restoring=false;save();});
-    window.addEventListener("beforeunload",save);
-    window.addEventListener("pageshow",restore);
+    window.addEventListener("pagehide",onPageHide);
+    window.addEventListener("beforeunload",onPageHide);
+    window.addEventListener("pageshow",event=>{if((event as PageTransitionEvent).persisted)restore();});
     document.addEventListener("visibilitychange",onVisibility);
-    restore();
     return ()=>{
       if(frame)window.cancelAnimationFrame(frame);
-      restoreTimers.forEach(id=>window.clearTimeout(id));
-      save();
+      if(restoreFrame)window.cancelAnimationFrame(restoreFrame);
+      onPageHide();
       window.removeEventListener("scroll",onScroll);
-      window.removeEventListener("beforeunload",save);
-      window.removeEventListener("pageshow",restore);
+      window.removeEventListener("pagehide",onPageHide);
+      window.removeEventListener("beforeunload",onPageHide);
       document.removeEventListener("visibilitychange",onVisibility);
     };
   },[profile.user_id]);
   useEffect(()=>{
-    if(busy){scrollRestoreStarted.current=true;return;}
-    if(!scrollRestoreStarted.current)return;
+    if(busy||!scrollRestorePending.current)return;
+    scrollRestorePending.current=false;
     restoreScrollRef.current();
   },[busy,profile.user_id]);
   useEffect(()=>{
@@ -455,7 +464,7 @@ export default function App({profile}:{profile:Profile}){
   const currentTitle=tabs.find(t=>t.id===tab)?.label||"Employee Attendance System";
   return <div className="shell">
     <main className="main">
-      <header className="topbar"><div className="brand"><div className="brand-mark">SN</div><div><h1>ShovoNote</h1><p>{currentTitle} · {profile.display_name||""} · {profile.role}</p></div></div><div className="actions"><button className="icon-btn" onClick={()=>void load()} title="Refresh"><RefreshCw/></button><button className="icon-btn" onClick={()=>window.print()} title="Print / PDF"><Printer/></button><button onClick={()=>supabase.auth.signOut()}><LogOut/> Sign Out</button></div></header>
+      <header className="topbar"><div className="brand"><div className="brand-mark">SN</div><div><h1>ShovoNote</h1><p>{currentTitle} · Developed by Shovo Sarker</p></div></div><div className="actions"><button className="icon-btn" onClick={()=>void load()} title="Refresh"><RefreshCw/></button><button className="icon-btn" onClick={()=>window.print()} title="Print / PDF"><Printer/></button><button onClick={()=>supabase.auth.signOut()}><LogOut/> Sign Out</button></div></header>
       <nav className="top-navigation">{tabs.map(t=><button key={t.id} className={tab===t.id?"active":""} onClick={()=>setTab(t.id)}>{t.icon}{t.label}</button>)}</nav>
       {notice&&<div className={noticeError?"notice error":"notice success"}>{notice}</div>}
       {tab!=="access"&&tab!=="backups"&&<section className="stats">
@@ -499,7 +508,7 @@ export default function App({profile}:{profile:Profile}){
       {tab==="backups"&&canManage&&<><div className="panel"><h3>Database Backup</h3><p className="muted">Employee, , Leave  and Calendar  JSON Backup secure Private Storage-in stored be।</p><div className="actions"><button className="primary" disabled={busy} onClick={()=>void makeBackup()}><HardDrive/> Now Backup Create</button><label className="upload-btn"><Upload/> Backup Restore Please<input type="file" accept=".json,application/json" hidden onChange={e=>{const f=e.target.files?.[0];if(f)void restoreBackup(f);e.currentTarget.value="";}}/></label></div></div><div className="employee-list">{backups.map(b=><div className="employee-row" key={b.id}><div><b>{b.file_name}</b><small>{new Date(b.created_at).toLocaleString("en-US")} · {(b.file_size/1024).toFixed(1)} KB</small></div><div className="actions"><button onClick={()=>void downloadBackup(b.storage_path,b.file_name)}><FileDown/> Download</button><button onClick={()=>void deleteBackup(b.id,b.storage_path)}><X/> Delete</button></div></div>)}{!backups.length&&<p className="muted pad">No No Backup available।</p>}</div></>}
       {noteViewer&&<div className="modal-backdrop" onClick={()=>setNoteViewer(null)}><section className="modal note-viewer" role="dialog" aria-modal="true" aria-label="Attendance note" onClick={e=>e.stopPropagation()}><div className="modal-head"><h2>Attendance Note</h2><button type="button" onClick={()=>setNoteViewer(null)}><X/></button></div><p className="muted">{noteViewer.employee} · {noteViewer.date}</p><div className="note-viewer-text">{noteViewer.note}</div><div className="modal-actions"><button className="primary" onClick={()=>setNoteViewer(null)}>Close</button></div></section></div>}
       {noteEditor&&<div className="modal-backdrop" onClick={()=>setNoteEditor(null)}><section className="modal note-viewer" role="dialog" aria-modal="true" aria-label="Edit attendance note" onClick={e=>e.stopPropagation()}><div className="modal-head"><h2>Daily Note</h2><button type="button" onClick={()=>setNoteEditor(null)}><X/></button></div><p className="muted">{noteEditor.employee} · {noteEditor.date}</p><textarea className="note-editor-input" rows={5} autoFocus placeholder="Write note for this date..." value={draftDailyNotes[noteEditor.employeeId+"|"+noteEditor.date]??""} disabled={busy} onChange={e=>setDraftDailyNotes(prev=>({...prev,[noteEditor.employeeId+"|"+noteEditor.date]:e.target.value}))}/><div className="modal-actions"><button type="button" onClick={()=>setNoteEditor(null)}>Cancel</button><button type="button" className="primary" disabled={busy||((draftDailyNotes[noteEditor.employeeId+"|"+noteEditor.date]??"").trim()===(dailyNotes.find(n=>n.employee_id===noteEditor.employeeId&&n.note_date===noteEditor.date)?.note||""))} onClick={()=>void saveDailyNote(noteEditor.employeeId,noteEditor.date)}>Save Note</button></div></section></div>}
-      <footer>Employee Attendance System · Secure access · "Secure Attendance Workspace"</footer>
+      <footer>Employee Attendance System · Secure access · Secure Attendance Workspace · Developed by Shovo Sarker</footer>
     </main>
   </div>;
 }
