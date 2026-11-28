@@ -1022,3 +1022,34 @@ button.note-open{
   .modal-actions>button,
   .employee-row .actions>button{padding-left:4px!important;padding-right:4px!important}
 }
+
+
+/* Give the attendance status, Save and Note controls clear horizontal separation */
+.table-wrap td.selected-date-cell .cell-editor{
+  display:flex!important;
+  flex-direction:row!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:8px!important;
+  column-gap:8px!important;
+  width:100%!important;
+  min-width:0!important;
+}
+.table-wrap td.selected-date-cell .cell-editor .status{
+  flex:0 0 48px!important;
+  width:48px!important;
+  min-width:48px!important;
+  margin:0!important;
+  text-align:center!important;
+  text-align-last:center!important;
+}
+.table-wrap td.selected-date-cell .cell-editor .save-cell,
+.table-wrap td.selected-date-cell .cell-editor .note-open{
+  flex:0 0 auto!important;
+  margin:0!important;
+  padding-left:5px!important;
+  padding-right:5px!important;
+}
+@media(max-width:850px){
+  .table-wrap td.selected-date-cell .cell-editor{gap:7px!important;column-gap:7px!important}
+}
