@@ -81,7 +81,7 @@ export default function App({profile}:{profile:Profile}){
   const [noticeError,setNoticeError]=useState(false);
   const [selectedDate,setSelectedDate]=useState(()=>{try{return localStorage.getItem("shovonote:last-date:"+profile.user_id)||today();}catch{return today();}});
   const [draftStatuses,setDraftStatuses]=useState<Record<string,string>>({});
-  const [expandedCalendarEmployee,setExpandedCalendarEmployee]=useState<string|null>(null);
+  const [expandedCalendarEmployee,setExpandedCalendarEmployee]=useState<string|null>(()=>{try{return localStorage.getItem("shovonote:expanded-calendar-employee:"+profile.user_id)||null;}catch{return null;}});
   const [noteViewer,setNoteViewer]=useState<{employee:string;date:string;note:string}|null>(null);
   const [bulkStatus,setBulkStatus]=useState("P");
   const [bulkOTHours,setBulkOTHours]=useState("2");
@@ -153,7 +153,7 @@ export default function App({profile}:{profile:Profile}){
     setBusy(false);
   }
   useEffect(()=>{void load();},[year,month.getMonth(),profile.user_id]);
-  useEffect(()=>{try{localStorage.setItem("shovonote:last-tab:"+profile.user_id,tab);localStorage.setItem("shovonote:last-month:"+profile.user_id,dateKey(new Date(year,month.getMonth(),1)));localStorage.setItem("shovonote:last-date:"+profile.user_id,selectedDate);}catch{/* Browser storage may be unavailable; keep the current session working. */}},[tab,year,month.getMonth(),selectedDate,profile.user_id]);
+  useEffect(()=>{try{localStorage.setItem("shovonote:last-tab:"+profile.user_id,tab);localStorage.setItem("shovonote:last-month:"+profile.user_id,dateKey(new Date(year,month.getMonth(),1)));localStorage.setItem("shovonote:last-date:"+profile.user_id,selectedDate);localStorage.setItem("shovonote:expanded-calendar-employee:"+profile.user_id,expandedCalendarEmployee||"");}catch{/* Browser storage may be unavailable; keep the current session working. */}},[tab,year,month.getMonth(),selectedDate,expandedCalendarEmployee,profile.user_id]);
   useEffect(()=>{const allowed=canSeeAll?["month","year","employees","leaves","calendar","overtime","ot-calendar",...(canManage?["access","backups"]:[])]:["mine","leaves","overtime","ot-calendar"];if(!allowed.includes(tab))setTab(allowed[0]);},[tab,canSeeAll,canManage]);
   async function setStatus(employeeId:string,date:string,status:string){
     if(!canManage)return;setBusy(true);
