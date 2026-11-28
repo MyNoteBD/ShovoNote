@@ -381,3 +381,108 @@ footer{border-top:1px solid #e5ece7;margin-top:24px}
 .days .status-fraction{font-size:7px;min-width:8px;line-height:.9}
 .days .status-fraction span:first-child{padding-bottom:1px}
 .days .status-fraction span:last-child{border-top:1px solid currentColor;padding-top:1px}
+
+
+/* Premium typography, hierarchy and refined interface finish */
+:root{
+  --ink:#17382f;
+  --ink-soft:#52685e;
+  --muted:#84948b;
+  --line:#e2ebe5;
+  --surface:#ffffff;
+  --surface-soft:#f7faf8;
+  --forest:#176b50;
+  --forest-deep:#104d3b;
+  --gold:#b18a4c;
+  font-family:"DM Sans","Noto Sans Bengali",sans-serif;
+  font-optical-sizing:auto;
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
+}
+body{color:var(--ink);letter-spacing:.005em}
+button,input,select,textarea{font-family:inherit}
+button{transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease}
+button:active{transform:translateY(1px)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #176b5030;outline-offset:2px}
+.topbar{
+  position:relative;overflow:hidden;
+  background:linear-gradient(115deg,#fff 0%,#fbfdfb 72%,#edf5ef 100%);
+  border:1px solid #dfe9e2;border-radius:18px;
+  box-shadow:0 10px 30px #17382f0b,0 1px 2px #17382f08;
+}
+.topbar:after{content:"";position:absolute;right:-48px;top:-92px;width:210px;height:210px;border:1px solid #176b5015;border-radius:50%;box-shadow:0 0 0 18px #176b5005,0 0 0 38px #176b5004;pointer-events:none}
+.topbar .brand{position:relative;z-index:1}
+.topbar .brand-mark{width:46px;height:46px;border-radius:14px;background:linear-gradient(145deg,#1b7658,#104d3b);box-shadow:0 5px 12px #176b5030;font-size:14px;letter-spacing:.04em}
+.topbar .brand h1{font-size:24px;font-weight:750;letter-spacing:-.8px;color:#123d30}
+.topbar .brand p{font-size:11px;font-weight:600;letter-spacing:.025em;color:#788b80}
+.topbar .actions{position:relative;z-index:1}
+.topbar .actions button,.icon-btn{border:1px solid #dce8e0;background:#fff;color:#355c4c;border-radius:10px;box-shadow:0 2px 5px #17382f08}
+.topbar .actions button:hover,.icon-btn:hover{background:#eff6f1;border-color:#bfd4c6}
+.top-navigation{
+  background:#e9f0eb;border:1px solid #dce8df;border-radius:14px;
+  padding:7px;box-shadow:inset 0 1px 1px #fff;
+}
+.top-navigation button{font-weight:650;letter-spacing:.005em;color:#52695e;border-radius:9px}
+.top-navigation button.active{background:linear-gradient(135deg,#1b7658,#12533e);box-shadow:0 4px 10px #176b5030;color:#fff}
+.panel,.employee-list,.calendar-year-picker,.toolbar,.ot-summary{
+  border:1px solid var(--line);border-radius:15px;
+  box-shadow:0 5px 18px #17382f07;
+}
+.panel{padding:19px;background:linear-gradient(180deg,#fff,#fcfdfc)}
+.panel h2,.panel h3,.modal h2,.modal h3{color:#173f33;font-weight:750;letter-spacing:-.35px}
+.panel h3{font-size:16px;margin:0 0 13px}
+.toolbar{box-shadow:0 4px 14px #17382f06}
+.month-nav b{font-size:16px;font-weight:750;letter-spacing:-.25px;color:#204a3a}
+.month-nav button{width:36px;height:36px;justify-content:center;border-radius:10px;background:#f8fbf9;border-color:#e2ebe5}
+.month-nav button:hover{background:#eaf4ed;border-color:#c8ddce}
+.stats div{border:1px solid #e4ece6;background:linear-gradient(155deg,#fff,#f9fcfa);box-shadow:0 5px 15px #17382f07}
+.stats span{font-size:11px;font-weight:650;letter-spacing:.015em;color:#75877d}
+.stats strong{font-size:26px;font-weight:800;letter-spacing:-.8px;color:#174c39;font-variant-numeric:tabular-nums}
+.field>span,.field>label{font-size:11px;font-weight:700;letter-spacing:.025em;color:#60766a}
+input,select,textarea{color:#29483b}
+input:not([type=checkbox]):not([type=radio]),select,textarea{
+  border-color:#dce7e0;border-radius:9px;background:#fff;
+  box-shadow:inset 0 1px 2px #17382f05;
+}
+input:focus,select:focus,textarea:focus{border-color:#80ad91!important;box-shadow:0 0 0 3px #176b5010!important}
+.primary{background:linear-gradient(135deg,#1b7658,#12543f);border-color:#176b50;box-shadow:0 3px 8px #176b5020;font-weight:700}
+.primary:hover{background:linear-gradient(135deg,#176b50,#0d4937);box-shadow:0 5px 12px #176b5028}
+.table-wrap{border:1px solid #dfe9e2;box-shadow:0 7px 22px #17382f08;background:#fff}
+table{font-variant-numeric:tabular-nums}
+th{font-size:10px;font-weight:750;letter-spacing:.035em;text-transform:uppercase;color:#536e60;background:linear-gradient(180deg,#f7faf8,#edf4ef);border-bottom:1px solid #dce8df}
+td{font-size:11px;color:#334d40}
+tbody tr:nth-child(even) td{background-color:#fcfdfc}
+tbody tr:hover td{background-color:#f3f8f4}
+.table-wrap td.name-cell{font-weight:700;color:#214b3a}
+.table-wrap td.name-cell small{font-weight:500;color:#89978f}
+.status-read{font-weight:800;letter-spacing:.015em;border:1px solid #e6eee8}
+.status-read.day-P{background:#e6f4eb;color:#176346;border-color:#d3e9da}
+.employee-row{padding:13px 16px;border-bottom:1px solid #edf2ee}
+.employee-row b{font-size:12px;font-weight:700;color:#244b3b}
+.employee-row small{font-size:10px;color:#819087}
+.calendar-employee-toggle{transition:background .18s ease}
+.calendar-employee-toggle:hover{background:#f2f8f3}
+.calendar-employee-toggle strong{font-size:13px;font-weight:750;letter-spacing:-.1px}
+.calendar-employee-toggle b{font-variant-numeric:tabular-nums}
+.months .mini-month{border:1px solid #e3ece5;border-radius:11px;box-shadow:0 3px 10px #17382f06;background:#fff}
+.mini-month>strong,.mini-month h4{font-size:11px;font-weight:750;color:#315744}
+.days span{border-radius:5px;font-weight:650}
+.notice{border:1px solid #d5e8da;border-radius:10px;font-weight:600}
+.notice.success{background:#f0f8f2;color:#276344}
+.notice.error{background:#fff3ef;color:#9c3926;border-color:#f1d9d1}
+.modal{border:1px solid #dfe9e2;border-radius:17px;box-shadow:0 24px 70px #102d2050}
+.modal-head{border-bottom:1px solid #edf2ee}
+footer{font-size:10px;font-weight:600;letter-spacing:.04em;color:#89978f;padding:14px 2px}
+.auth-check-surface{min-height:100vh;background:radial-gradient(ellipse at 15% 0%,#e6f2eb 0,transparent 38%),#f4f7f5}
+@media(max-width:650px){
+ .topbar .brand h1{font-size:21px}
+ .topbar .brand p{font-size:10px}
+ .panel{padding:14px}
+ .stats strong{font-size:22px}
+ .month-nav b{font-size:14px}
+ th{font-size:9px}
+ td{font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){
+ *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
