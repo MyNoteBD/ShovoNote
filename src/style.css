@@ -638,3 +638,6 @@ footer{font-size:10px;font-weight:600;letter-spacing:.04em;color:#89978f;padding
 .cell-editor .status{min-height:24px!important;padding:2px 1px!important;font-size:8px!important}
 @media(min-width:851px){.table-wrap{scrollbar-width:auto;scrollbar-color:#9aafa3 #edf2ee}.table-wrap::-webkit-scrollbar{height:13px}.table-wrap::-webkit-scrollbar-thumb{background:#9aafa3;border:3px solid #edf2ee;border-radius:10px}.table-wrap::-webkit-scrollbar-track{background:#edf2ee;border-radius:10px}}
 @media(max-width:650px){.table-wrap table th,.table-wrap table td{padding:3px 3px!important}.table-wrap table tbody tr{height:25px}}
+
+/* Short leave is present, but consumes the annual C/L allowance. */
+.status.st-P1,.status.st-P2,.status-read.day-P1,.status-read.day-P2{background:#fff0d7!important;color:#865a15!important;border:1px solid #e8d5ae!important}
