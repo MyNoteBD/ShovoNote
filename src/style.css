@@ -819,3 +819,42 @@ button.note-open{
     font-size:9px!important;
   }
 }
+
+
+/* Improve employee-name readability at normal 100% zoom */
+.table-wrap td.name-cell{
+  font-size:10px!important;
+  font-weight:800!important;
+  line-height:1.15!important;
+  color:#183f31!important;
+  overflow-wrap:normal!important;
+  word-break:normal!important;
+}
+.table-wrap td.name-cell small{
+  font-size:8px!important;
+  font-weight:600!important;
+}
+@media(min-width:851px){
+  .table-wrap table th:nth-child(2),
+  .table-wrap table td:nth-child(2){
+    width:108px!important;
+    min-width:108px!important;
+    max-width:108px!important;
+  }
+  .table-wrap table th:nth-child(3),
+  .table-wrap table td:nth-child(3){font-size:8px!important}
+  .table-wrap td.name-cell{
+    font-size:9.5px!important;
+    font-weight:800!important;
+    line-height:1.12!important;
+  }
+  .table-wrap td.name-cell small{font-size:7.5px!important}
+}
+@media(max-width:850px){
+  .table-wrap td.name-cell{
+    font-size:10px!important;
+    font-weight:800!important;
+    line-height:1.15!important;
+  }
+  .table-wrap td.name-cell small{font-size:8px!important}
+}
