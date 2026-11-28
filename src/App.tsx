@@ -290,7 +290,7 @@ export default function App({profile}:{profile:Profile}){
     const statusStyle=(status:string,date:string)=>{
       if(!status)return new Date(date+"T00:00:00").getDay()===5?"background:#f1f2f2;color:#777;":"";
       if(status==="H"||status==="W/O"||status==="L/L")return "background:#fde9e9;color:#a23b42;font-weight:bold;";
-      if(["C/L","C/L2","O/L","O/L2","S/L","H/L","LL/2"].includes(status))return "background:#fff1d8;color:#805b1c;font-weight:bold;";
+      if(["P1","P2","C/L","C/L2","O/L","O/L2","S/L","H/L","LL/2"].includes(status))return "background:#fff1d8;color:#805b1c;font-weight:bold;";
       if(PRESENT_STATUSES.includes(status))return "background:#e8f4eb;color:#1c6545;font-weight:bold;";
       if(status==="A")return "background:#fce9e6;color:#a13b2d;font-weight:bold;";
       return "background:#f0f3f1;color:#53645b;font-weight:bold;";
