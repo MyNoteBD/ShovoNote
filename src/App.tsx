@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode, FormEvent } from "react";
 import { supabase } from "./supabase";
 import type { Profile } from "./AuthGate";
@@ -154,6 +154,25 @@ export default function App({profile}:{profile:Profile}){
   }
   useEffect(()=>{void load();},[year,month.getMonth(),profile.user_id]);
   useEffect(()=>{try{localStorage.setItem("shovonote:last-tab:"+profile.user_id,tab);localStorage.setItem("shovonote:last-month:"+profile.user_id,dateKey(new Date(year,month.getMonth(),1)));localStorage.setItem("shovonote:last-date:"+profile.user_id,selectedDate);localStorage.setItem("shovonote:expanded-calendar-employee:"+profile.user_id,expandedCalendarEmployee||"");}catch{/* Browser storage may be unavailable; keep the current session working. */}},[tab,year,month.getMonth(),selectedDate,expandedCalendarEmployee,profile.user_id]);
+  const scrollRestoreStarted=useRef(false);
+  useEffect(()=>{
+    const key="shovonote:scroll-position:"+profile.user_id;
+    let frame=0;
+    const save=()=>{try{localStorage.setItem(key,String(window.scrollY));}catch{}};
+    const onScroll=()=>{if(frame)return;frame=window.requestAnimationFrame(()=>{frame=0;save();});};
+    const restore=()=>{try{const saved=Number(localStorage.getItem(key)||0);if(Number.isFinite(saved)&&saved>0)window.scrollTo({top:saved,behavior:"instant"});}catch{}};
+    window.addEventListener("scroll",onScroll,{passive:true});
+    window.addEventListener("pagehide",save);
+    window.addEventListener("pageshow",restore);
+    return ()=>{save();window.removeEventListener("scroll",onScroll);window.removeEventListener("pagehide",save);window.removeEventListener("pageshow",restore);if(frame)window.cancelAnimationFrame(frame);};
+  },[profile.user_id]);
+  useEffect(()=>{
+    if(busy){scrollRestoreStarted.current=true;return;}
+    if(!scrollRestoreStarted.current)return;
+    let first=0,second=0;
+    first=window.requestAnimationFrame(()=>{second=window.requestAnimationFrame(()=>{try{const saved=Number(localStorage.getItem("shovonote:scroll-position:"+profile.user_id)||0);if(Number.isFinite(saved)&&saved>0)window.scrollTo({top:saved,behavior:"instant"});}catch{}});});
+    return ()=>{window.cancelAnimationFrame(first);if(second)window.cancelAnimationFrame(second);};
+  },[busy,profile.user_id]);
   useEffect(()=>{const allowed=canSeeAll?["month","year","employees","leaves","calendar","overtime","ot-calendar",...(canManage?["access","backups"]:[])]:["mine","leaves","overtime","ot-calendar"];if(!allowed.includes(tab))setTab(allowed[0]);},[tab,canSeeAll,canManage]);
   async function setStatus(employeeId:string,date:string,status:string){
     if(!canManage)return;setBusy(true);
