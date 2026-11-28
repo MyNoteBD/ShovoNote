@@ -330,7 +330,7 @@ export default function App({profile}:{profile:Profile}){
   function exportEmployees(){
     csvDownload([["Control No","Name","Department","Designation","Phone","Email","Joining Date","Active"],...employees.map(e=>[e.employee_code,e.full_name,e.department,e.designation,e.phone,e.email,e.joining_date,e.is_active?"Yes":"No"])],"employees.csv");
   }
-  const totals=(id:string)=>{const rows=attendance.filter(a=>a.employee_id===id&&a.attendance_date>=yearFirst&&a.attendance_date<=yearLast);const casualUsed=rows.filter(a=>a.status==="C/L").length+rows.filter(a=>a.status==="C/L2").length*.5+rows.filter(a=>a.status==="P1").length/8+rows.filter(a=>a.status==="P2").length/4;return STATUSES.map(s=>({s,n:s==="C/L"?casualUsed:rows.filter(a=>a.status===s).length*(["C/L2","O/L2","H/L"].includes(s)?0.5:1)})).concat([{s:"C/L Left",n:Math.max(0,10-casualUsed)}]);};
+  const totals=(id:string)=>{const rows=attendance.filter(a=>a.employee_id===id&&a.attendance_date>=yearFirst&&a.attendance_date<=yearLast);const casualUsed=rows.filter(a=>a.status==="C/L").length+rows.filter(a=>a.status==="C/L2").length*.5+rows.filter(a=>a.status==="P1").length/8+rows.filter(a=>a.status==="P2").length/4;return STATUSES.map(s=>({s,n:rows.filter(a=>a.status===s).length*(["C/L2","O/L2","H/L"].includes(s)?0.5:1)})).concat([{s:"C/L Used",n:casualUsed},{s:"C/L Left",n:Math.max(0,10-casualUsed)}]);};
   const monthCount=(status:string)=>attendance.filter(a=>(status==="P"?PRESENT_STATUSES.includes(a.status):a.status===status)&&a.attendance_date>=first&&a.attendance_date<=last).length;
   async function saveEmployee(e:FormEvent){
     e.preventDefault();if(!canManage)return;setBusy(true);
