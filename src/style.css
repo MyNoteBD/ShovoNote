@@ -362,3 +362,22 @@ footer{border-top:1px solid #e5ece7;margin-top:24px}
  .cell-editor .status{width:86px!important;min-width:86px!important;min-height:34px;font-size:9px}
  .cell-editor .date-note-input{width:86px;min-width:86px;min-height:38px;font-size:10px}
 }
+
+
+/* Unified calendar rules: official days stay red; personal leave stays yellow */
+.table-wrap td.official-holiday-cell{background:#fff0f0!important;color:#b8434b!important}
+.table-wrap td.personal-leave-cell{background:#fff0d7!important;color:#865a15!important}
+.days span.official-holiday-cell{background:#ffe5e5!important;color:#b8434b!important;border-radius:5px}
+.days span.personal-leave-cell{background:#fff0d7!important;color:#865a15!important;border-radius:5px}
+.status-read.tone-holiday{background:#ffe5e5!important;color:#b8434b!important}
+.status-read.tone-leave{background:#fff0d7!important;color:#865a15!important}
+.days span.official-holiday-cell .status-read,
+.days span.personal-leave-cell .status-read{background:transparent!important;color:inherit!important;min-width:0;padding:0}
+.p-ot-subtext{display:block;margin-top:1px;font-size:7px;line-height:1.05;font-weight:600;color:#6f8a7c;opacity:.78;white-space:nowrap}
+.days .p-ot-subtext{font-size:6px;line-height:1}
+.days .status-read{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:1px 0;min-width:0;font-size:8px;line-height:1.05}
+.days .half-status{display:inline-flex;flex-direction:row;gap:2px}
+.days .half-status b{font-size:7px}
+.days .status-fraction{font-size:7px;min-width:8px;line-height:.9}
+.days .status-fraction span:first-child{padding-bottom:1px}
+.days .status-fraction span:last-child{border-top:1px solid currentColor;padding-top:1px}
