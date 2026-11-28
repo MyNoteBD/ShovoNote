@@ -30,7 +30,7 @@ function readAppCache(userId:string,organizationId:string,year:number):AppDataCa
 }
 
 const STATUSES = ["P","P1","P2","A","C/L","C/L2","O/L","O/L2","S/L","H","L/O","W/O","L/L","H/L","OT","LL/2"];
-const LABELS:Record<string,string> = {P:"Present · 8 Hours",P1:"Present · 1 Hour Short Leave",P2:"Present · 2 Hours Short Leave",A:"Absent","C/L":"Casual Leave","C/L2":"Half-day Casual Leave","O/L":"Official Leave","O/L2":"Half-day Official Leave","S/L":"Sick Leave",H:"Holiday","L/O":"Lay Off","W/O":"Weekly Off","L/L":"Compensatory Weekly Off (Friday Work Exchange)","H/L":"Half-day Leave",OT:"Legacy Overtime Code","LL/2":"Legacy Leave Code"};
+const LABELS:Record<string,string> = {P:"Present · 8 Hours",P1:"Present + 1 Hour C/L",P2:"Present + 2 Hours C/L",A:"Absent","C/L":"Casual Leave","C/L2":"Half-day Casual Leave","O/L":"Official Leave","O/L2":"Half-day Official Leave","S/L":"Sick Leave",H:"Holiday","L/O":"Lay Off","W/O":"Weekly Off","L/L":"Compensatory Weekly Off (Friday Work Exchange)","H/L":"Half-day Leave",OT:"Legacy Overtime Code","LL/2":"Legacy Leave Code"};
 const PRESENT_STATUSES = ["P","P1","P2"];
 const DUTY_HOURS:Record<string,number> = {P:8,P1:7,P2:6,A:0,"C/L":0,"C/L2":4,"O/L":0,"O/L2":4,"S/L":0,H:0,"L/O":0,"W/O":0,"L/L":0,"H/L":4};
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -114,7 +114,7 @@ export default function App({profile}:{profile:Profile}){
   const eventDateLookup=useMemo(()=>new Map(events.filter(ev=>ev.event_type==="HOLIDAY"||ev.event_type==="WEEKLY_OFF").map(ev=>[ev.event_date,ev])),[events]);
   const calendarTone=(date:string,status:string)=>{
     if(new Date(date+"T00:00:00").getDay()===5||eventDateLookup.has(date)||status==="H"||status==="W/O")return "holiday";
-    if(["C/L","C/L2","O/L","O/L2","S/L","H/L","LL/2"].includes(status))return "leave";
+    if(["P1","P2","C/L","C/L2","O/L","O/L2","S/L","H/L","LL/2"].includes(status))return "leave";
     return "";
   };
   const monthOTTotal=overtimeEntries.filter(o=>o.overtime_date>=first&&o.overtime_date<=last&&(!profile.employee_id||canSeeAll||o.employee_id===profile.employee_id)).reduce((sum,o)=>sum+Number(o.hours||0),0);
@@ -299,7 +299,7 @@ export default function App({profile}:{profile:Profile}){
     const body=roster.map(emp=>{
       const records=days.map(d=>{const date=dateKey(new Date(year,month.getMonth(),d));const status=lookup.get(emp.id+"|"+date)?.status||"";return {date,status};});
       const present=records.filter(x=>PRESENT_STATUSES.includes(x.status)).length;
-      const casual=records.filter(x=>x.status==="C/L").length+records.filter(x=>x.status==="C/L2").length*.5;
+      const casual=records.filter(x=>x.status==="C/L").length+records.filter(x=>x.status==="C/L2").length*.5+records.filter(x=>x.status==="P1").length/8+records.filter(x=>x.status==="P2").length/4;
       const official=records.filter(x=>x.status==="O/L").length+records.filter(x=>x.status==="O/L2").length*.5;
       const sick=records.filter(x=>x.status==="S/L").length;
       const absent=records.filter(x=>x.status==="A").length;
@@ -330,7 +330,7 @@ export default function App({profile}:{profile:Profile}){
   function exportEmployees(){
     csvDownload([["Control No","Name","Department","Designation","Phone","Email","Joining Date","Active"],...employees.map(e=>[e.employee_code,e.full_name,e.department,e.designation,e.phone,e.email,e.joining_date,e.is_active?"Yes":"No"])],"employees.csv");
   }
-  const totals=(id:string)=>STATUSES.map(s=>({s,n:attendance.filter(a=>a.employee_id===id&&a.status===s&&a.attendance_date>=yearFirst&&a.attendance_date<=yearLast).length*(["C/L2","O/L2","H/L"].includes(s)?0.5:1)}));
+  const totals=(id:string)=>{const rows=attendance.filter(a=>a.employee_id===id&&a.attendance_date>=yearFirst&&a.attendance_date<=yearLast);const casualUsed=rows.filter(a=>a.status==="C/L").length+rows.filter(a=>a.status==="C/L2").length*.5+rows.filter(a=>a.status==="P1").length/8+rows.filter(a=>a.status==="P2").length/4;return STATUSES.map(s=>({s,n:s==="C/L"?casualUsed:rows.filter(a=>a.status===s).length*(["C/L2","O/L2","H/L"].includes(s)?0.5:1)})).concat([{s:"C/L Left",n:Math.max(0,10-casualUsed)}]);};
   const monthCount=(status:string)=>attendance.filter(a=>(status==="P"?PRESENT_STATUSES.includes(a.status):a.status===status)&&a.attendance_date>=first&&a.attendance_date<=last).length;
   async function saveEmployee(e:FormEvent){
     e.preventDefault();if(!canManage)return;setBusy(true);
