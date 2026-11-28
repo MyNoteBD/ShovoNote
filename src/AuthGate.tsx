@@ -13,8 +13,8 @@ export default function AuthGate(){
  }
  useEffect(()=>{supabase.auth.getSession().then(({data})=>load(data.session));const {data:{subscription}}=supabase.auth.onAuthStateChange((_e,s)=>{setLoading(true);void load(s)});return()=>subscription.unsubscribe()},[]);
  async function signIn(e:React.FormEvent){e.preventDefault();setBusy(true);setError("");const {error}=await supabase.auth.signInWithPassword({email,password});if(error)setError(error.message);setBusy(false)}
- if(loading)return <div className="center"><div className="spinner"/>লোড হচ্ছে…</div>;
- if(!session)return <main className="login"><section className="login-card"><div className="brand-mark">EA</div><h1>Employee Attendance System</h1><p>আপনার অ্যাকাউন্টে সাইন ইন করুন</p><form onSubmit={signIn}><label>ইমেইল<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required autoComplete="username"/></label><label>পাসওয়ার্ড<input type="password" value={password} onChange={e=>setPassword(e.target.value)} required autoComplete="current-password"/></label>{error&&<div className="error">{error}</div>}<button className="primary wide" disabled={busy}>{busy?"অপেক্ষা করুন…":"Sign in"}</button></form></section></main>;
+ if(loading)return <div className="auth-check-surface" aria-hidden="true"/>;
+ if(!session)return <main className="login"><section className="login-card"><div className="brand-mark">EA</div><h1>Employee Attendance System</h1><p>আপনার অ্যাকাউন্টে সাইন ইন করুন</p><form onSubmit={signIn}><label>ইমেইল<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required autoComplete="username"/></label><label>পাসওয়ার্ড<input type="password" value={password} onChange={e=>setPassword(e.target.value)} required autoComplete="current-password"/></label>{error&&<div className="error">{error}</div>}<button className="primary wide" disabled={busy}>"Sign in"</button></form></section></main>;
  if(!profile)return <div className="center"><h2>এই অ্যাকাউন্টের জন্য প্রোফাইল পাওয়া যায়নি</h2><p>অ্যাডমিনের সঙ্গে যোগাযোগ করুন।</p><button onClick={()=>supabase.auth.signOut()}>Sign out</button></div>;
  return <App profile={profile}/>;
 }
