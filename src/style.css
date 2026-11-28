@@ -1053,3 +1053,40 @@ button.note-open{
 @media(max-width:850px){
   .table-wrap td.selected-date-cell .cell-editor{gap:7px!important;column-gap:7px!important}
 }
+
+
+/* Final layout fix: separate the status selector from Save and Note buttons */
+.table-wrap table td.selected-date-cell{
+  min-width:136px!important;
+  width:136px!important;
+}
+.table-wrap table td.selected-date-cell .cell-editor{
+  display:flex!important;
+  flex-direction:row!important;
+  flex-wrap:nowrap!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:7px!important;
+  column-gap:7px!important;
+  width:max-content!important;
+  min-width:0!important;
+  margin:0 auto!important;
+}
+.table-wrap table td.selected-date-cell .cell-editor select.status{
+  flex:0 0 48px!important;
+  width:48px!important;
+  min-width:48px!important;
+  margin:0!important;
+}
+.table-wrap table td.selected-date-cell .cell-editor button.save-cell{
+  flex:0 0 auto!important;
+  min-width:28px!important;
+  margin:0!important;
+  padding-left:5px!important;
+  padding-right:5px!important;
+  white-space:nowrap!important;
+}
+@media(max-width:850px){
+  .table-wrap table td.selected-date-cell{min-width:136px!important;width:136px!important}
+  .table-wrap table td.selected-date-cell .cell-editor{gap:7px!important;column-gap:7px!important}
+}
