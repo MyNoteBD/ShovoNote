@@ -209,7 +209,8 @@ export default function App({profile}:{profile:Profile}){
     window.addEventListener("scroll",onScroll,{passive:true});
     window.addEventListener("pagehide",onPageHide);
     window.addEventListener("beforeunload",onPageHide);
-    window.addEventListener("pageshow",event=>{if((event as PageTransitionEvent).persisted)restore();});
+    const onPageShow=(event:PageTransitionEvent)=>{if(event.persisted)restore();};
+    window.addEventListener("pageshow",onPageShow);
     document.addEventListener("visibilitychange",onVisibility);
     return ()=>{
       if(frame)window.cancelAnimationFrame(frame);
@@ -218,14 +219,17 @@ export default function App({profile}:{profile:Profile}){
       window.removeEventListener("scroll",onScroll);
       window.removeEventListener("pagehide",onPageHide);
       window.removeEventListener("beforeunload",onPageHide);
+      window.removeEventListener("pageshow",onPageShow);
       document.removeEventListener("visibilitychange",onVisibility);
     };
   },[profile.user_id]);
+  const skipInitialScrollEffect=useRef(true);
   useEffect(()=>{
+    if(skipInitialScrollEffect.current){skipInitialScrollEffect.current=false;return;}
     if(busy||!scrollRestorePending.current)return;
     scrollRestorePending.current=false;
     restoreScrollRef.current();
-  },[busy,profile.user_id]);
+  },[busy,profile.user_id,employees.length,attendance.length]);
   useEffect(()=>{
     const onWheel=(event:WheelEvent)=>{
       if(!event.shiftKey||Math.abs(event.deltaY)<1)return;
