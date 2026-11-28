@@ -618,3 +618,12 @@ footer{font-size:10px;font-weight:600;letter-spacing:.04em;color:#89978f;padding
 .cell-editor .note-open{background:#edf5ef;color:#245b43;border-color:#d4e5d9}
 .note-editor-input{display:block;width:100%;min-height:120px;resize:vertical;border:1px solid #dce5e0;border-radius:9px;padding:11px;font:inherit;font-size:13px;line-height:1.5;color:#29463b;background:#fff}
 @media(max-width:650px){.cell-editor{gap:2px}.cell-editor .status{width:56px!important;min-width:56px!important;font-size:8px!important}.cell-editor .save-cell{padding:4px 5px;font-size:8px}}
+
+
+/* Keep C/L and O/L color on the status control only */
+.table-wrap td.personal-leave-cell{background:#fff!important;color:inherit!important}
+.table-wrap td.selected-date-cell{background:#fff!important}
+.cell-editor .status.st-C-L,
+.cell-editor .status.st-C-L2,
+.cell-editor .status.st-O-L,
+.cell-editor .status.st-O-L2{background:#fff0d7!important;color:#865a15!important;border:1px solid #e8d5ae!important}
